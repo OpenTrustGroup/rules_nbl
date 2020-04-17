@@ -3,18 +3,13 @@ load(":cc_toolchain_config.bzl", "cc_toolchain_config")
 package(default_visibility = ["//visibility:public"])
 
 filegroup(
-    name = "tools",
-    srcs = glob(["host/**"]),
+    name = "create_archive_manifest",
+    srcs = glob(["host/x64/create_archive_manifest"]),
 )
 
 filegroup(
-    name = "sysroot",
-    srcs = glob(["hee/**"]),
-)
-
-filegroup(
-    name = "clang",
-    srcs = glob(["toolchains/clang/**"]),
+    name = "far",
+    srcs = glob(["host/x64/far"]),
 )
 
 toolchain(
@@ -36,8 +31,8 @@ cc_toolchain(
     compiler_files = ":all",
     dwp_files = ":empty",
     linker_files = ":all",
-    objcopy_files = ":empty",
-    strip_files = ":empty",
+    objcopy_files = ":all",
+    strip_files = ":all",
     toolchain_config = ":aarch64_config",
 )
 
@@ -47,11 +42,11 @@ cc_toolchain_config(
 
 filegroup(
     name = "all",
-    srcs = [
-        ":clang",
-        ":sysroot",
-        ":tools",
-    ],
+    srcs = glob([
+        "hee/**",
+        "host/**",
+        "toolchains/clang/**",
+    ]),
 )
 
 filegroup(
