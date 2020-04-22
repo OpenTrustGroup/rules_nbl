@@ -12,6 +12,61 @@ filegroup(
     srcs = glob(["host/x64/far"]),
 )
 
+filegroup(
+    name = "secmgr_debug_tool",
+    srcs = glob(["run/otrp/debug_tool/secmgr_debug_tool.jar"]),
+)
+
+filegroup(
+    name = "otrp_runfiles",
+    srcs = glob([
+        "run/otrp/**/*.sh",
+        "run/otrp/**/*.jar",
+    ]),
+)
+
+filegroup(
+    name = "secmgr_debug",
+    srcs = glob(["run/otrp/debug_tool/secmgr_debug.sh"]),
+)
+
+filegroup(
+    name = "otrp_provision",
+    srcs = glob(["run/otrp/provision_tool/provision_create_ha_by_config.sh"]),
+)
+
+filegroup(
+    name = "otrp_keystore",
+    srcs = glob(
+        ["run/otrp/key_store_test"],
+        exclude_directories = 0,
+    ),
+)
+
+filegroup(
+    name = "otrp_provision_tool",
+    srcs = glob([
+        "run/otrp/provision_tool/*.sh",
+        "run/otrp/provision_tool/*.jar",
+    ]),
+)
+
+filegroup(
+    name = "otrp_sign_tool",
+    srcs = glob([
+        "run/otrp/sign_tool/*.sh",
+        "run/otrp/sign_tool/*.jar",
+    ]),
+)
+
+filegroup(
+    name = "otrp_elf_tool",
+    srcs = glob([
+        "run/otrp/elf_tool/*",
+        "run/otrp/sign_tool/*.jar",
+    ]),
+)
+
 toolchain(
     name = "clang_fuchsia_aarch64",
     exec_compatible_with = [

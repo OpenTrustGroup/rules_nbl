@@ -1,3 +1,8 @@
+load(
+    "@io_bazel_rules_nbl//nbl/private:providers.bzl",
+    "PackageInfo",
+)
+
 def _pkg_far_impl(ctx):
     data_files = []
     for f in ctx.files.data:
@@ -26,6 +31,7 @@ def _pkg_far_impl(ctx):
         executable = ctx.executable.far,
         outputs = [ctx.outputs.out],
     )
+    return [PackageInfo(exec = ctx.file.exec)]
 
 _real_pkg_far = rule(
     implementation = _pkg_far_impl,
