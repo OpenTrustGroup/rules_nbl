@@ -4,6 +4,6 @@ MIN_SUPPORTED_VERSION = "0.00"
 
 SDK_REPOSITORIES = {
     "0.0.0": {
-        "linux_amd64": ("NBL_SDK_V0.0.0_99999999_99999999.tar.xz", "c93b7c8f076f0f6b30ad75a88a8bc38607644c9c597970873b12812ea1b76e6b"),
+        "linux_amd64": ("NBL_SDK_V0.0.0_99999999_99999999.tar.xz", "1c6c39bc2a1cd044ff446a9c025ba745933f5924564e90ff71cb4fe53be1c8e7"),
     },
 }
