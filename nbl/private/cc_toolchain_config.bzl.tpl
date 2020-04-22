@@ -126,6 +126,7 @@ def _impl(ctx):
                         flags = [
                             "--target=aarch64-fuchsia",
                             "--sysroot=%{SDK_SYSROOT_PATH}%",
+                            "-I%{SDK_SYSROOT_PATH}%/trusty/include",
                         ],
                     ),
                 ],
@@ -267,6 +268,7 @@ def _impl(ctx):
 
     cxx_builtin_include_directories = [
         "%{SDK_SYSROOT_PATH}%/include",
+        "%{SDK_SYSROOT_PATH}%/trusty/include",
         "%{SDK_COMPILER_PATH}%/include/c++/v1",
         "%{SDK_COMPILER_PATH}%/lib/clang/10.0.0/include",
     ]
@@ -282,7 +284,7 @@ def _impl(ctx):
         tool_path(name = "nm", path = "%{SDK_COMPILER_PATH}%/bin/llvm-nm"),
         tool_path(name = "objcopy", path = "%{SDK_COMPILER_PATH}%/bin/llvm-objcopy"),
         tool_path(name = "objdump", path = "%{SDK_COMPILER_PATH}%/bin/llvm-objdump"),
-        tool_path(name = "strip", path = "/usr/bin/strip"),
+        tool_path(name = "strip", path = "%{SDK_COMPILER_PATH}%/bin/llvm-objcopy"),
     ]
 
     action_configs = [
@@ -293,6 +295,23 @@ def _impl(ctx):
         action_config(
             action_name = ACTION_NAMES.cpp_link_executable,
             tools = [tool(path = "%{SDK_COMPILER_PATH}%/bin/clang++")],
+        ),
+        action_config(
+            action_name = ACTION_NAMES.strip,
+            tools = [tool(path = "%{SDK_COMPILER_PATH}%/bin/llvm-objcopy")],
+            flag_sets = [
+                flag_set(
+                    flag_groups = [
+                        flag_group(
+                            flags = [
+                                "--strip-all-gnu",
+                                "%{input_file}",
+                                "%{input_file}.stripped",
+                            ],
+                        ),
+                    ],
+                ),
+            ],
         ),
     ]
 
