@@ -62,3 +62,17 @@ def nbl_register_toolchains():
         name = "nbl_sdk",
         strip_prefix = "sdk",
     )
+
+def _nbl_lib_impl(ctx):
+    ctx.symlink("../nbl_sdk/hee", "hee")
+    ctx.template(
+        "BUILD.bazel",
+        Label("@io_bazel_rules_nbl//nbl/private:nbl_lib.bzl.tpl"),
+    )
+
+_nbl_lib = repository_rule(
+    implementation = _nbl_lib_impl,
+)
+
+def nbl_register_libraries():
+    _nbl_lib(name = "nbl_lib")

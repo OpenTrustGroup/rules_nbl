@@ -5,7 +5,9 @@ load(
 load(
     "@io_bazel_rules_nbl//nbl/private:sdk.bzl",
     _nbl_register_toolchains = "nbl_register_toolchains",
+    _nbl_register_libraries = "nbl_register_libraries",
 )
 
 nbl_rules_dependencies = _nbl_rules_dependencies
 nbl_register_toolchains = _nbl_register_toolchains
+nbl_register_libraries = _nbl_register_libraries
