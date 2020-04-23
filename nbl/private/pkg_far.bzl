@@ -4,6 +4,11 @@ load(
 )
 
 def _pkg_far_impl(ctx):
+    toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
+    sdk = toolchain.sdk
+    create_archive_manifest = sdk.host.create_archive_manifest
+    far = sdk.host.far
+
     data_files = []
     for f in ctx.files.data:
         if f.path.startswith(ctx.label.package):
@@ -20,7 +25,7 @@ def _pkg_far_impl(ctx):
     ctx.actions.run(
         inputs = ctx.files.data + [ctx.file.exec, ctx.file.meta, ctx.file.rscs],
         arguments = ["-p", ctx.label.package, "-o", archive_manifest.path, "-e", ctx.file.exec.path, "-a", ",".join(data_files)],
-        executable = ctx.executable.create_archive_manifest,
+        executable = create_archive_manifest,
         outputs = [archive_manifest],
     )
 
@@ -28,7 +33,7 @@ def _pkg_far_impl(ctx):
     ctx.actions.run(
         inputs = ctx.files.data + [ctx.file.exec, ctx.file.meta, ctx.file.rscs, archive_manifest],
         arguments = ["create", "--archive=" + ctx.outputs.out.path, "--manifest=" + archive_manifest.path],
-        executable = ctx.executable.far,
+        executable = far,
         outputs = [ctx.outputs.out],
     )
     return [PackageInfo(exec = ctx.file.exec)]
@@ -40,20 +45,9 @@ _real_pkg_far = rule(
         "data": attr.label_list(allow_files = True),
         "meta": attr.label(allow_single_file = True),
         "rscs": attr.label(allow_single_file = True),
-        "create_archive_manifest": attr.label(
-            default = Label("@nbl_sdk//:create_archive_manifest"),
-            cfg = "host",
-            executable = True,
-            allow_files = True,
-        ),
-        "far": attr.label(
-            default = Label("@nbl_sdk//:far"),
-            cfg = "host",
-            executable = True,
-            allow_files = True,
-        ),
         "out": attr.output(),
     },
+    toolchains = ["@io_bazel_rules_nbl//nbl:toolchain"],
 )
 
 def pkg_far(**kwargs):

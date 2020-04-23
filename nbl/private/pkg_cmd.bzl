@@ -1,14 +1,23 @@
 load(
     "@io_bazel_rules_nbl//nbl/private:providers.bzl",
+    "NebulaSdk",
     "PackageInfo",
+    "SdkHost",
+    "SdkOtrp",
 )
 
 def _make_provision_impl(ctx):
+    toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
+    sdk = toolchain.sdk
+    otrp_provision_exe = sdk.otrp.provision_exe
+    otrp_keystore = sdk.otrp.keystore
+    otrp_suite = sdk.otrp.suite
+
     ctx.actions.run(
-        inputs = [ctx.file.keystore, ctx.file.srcs, ctx.file.sd_privilege],
+        inputs = [otrp_keystore, ctx.file.srcs, ctx.file.sd_privilege],
         arguments = [
             "-c",
-            ctx.file.keystore.path,
+            otrp_keystore.path,
             "-e",
             ctx.file.srcs.path,
             "-o",
@@ -16,10 +25,11 @@ def _make_provision_impl(ctx):
             "--sd_privilege_file",
             ctx.file.sd_privilege.path,
         ],
-        executable = ctx.executable.provision,
+        executable = otrp_provision_exe,
         outputs = [ctx.outputs.out],
-        tools = ctx.files.otrp_runfiles,
+        tools = otrp_suite,
     )
+    return [PackageInfo()]
 
 _make_provision = rule(
     implementation = _make_provision_impl,
@@ -27,29 +37,11 @@ _make_provision = rule(
         "srcs": attr.label(
             allow_single_file = True,
             mandatory = True,
-            providers = [PackageInfo],
-        ),
-        "provision": attr.label(
-            default = Label("@nbl_sdk//:otrp_provision"),
-            cfg = "host",
-            executable = True,
-            allow_single_file = True,
-        ),
-        "keystore": attr.label(
-            default = Label("@nbl_sdk//:otrp_keystore"),
-            allow_single_file = True,
         ),
         "sd_privilege": attr.label(allow_single_file = True, mandatory = True),
-        "otrp_runfiles": attr.label_list(
-            allow_files = True,
-            default = [
-                Label("@nbl_sdk//:otrp_provision_tool"),
-                Label("@nbl_sdk//:otrp_sign_tool"),
-                Label("@nbl_sdk//:otrp_elf_tool"),
-            ],
-        ),
         "out": attr.output(),
     },
+    toolchains = ["@io_bazel_rules_nbl//nbl:toolchain"],
 )
 
 def _register_cmd_launch_impl(ctx):

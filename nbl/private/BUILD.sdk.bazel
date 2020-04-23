@@ -1,4 +1,6 @@
 load(":cc_toolchain_config.bzl", "cc_toolchain_config")
+load("@io_bazel_rules_nbl//nbl/private:sdk.bzl", "nbl_sdk")
+load("@io_bazel_rules_nbl//nbl/private:nbl_toolchain.bzl", "declare_toolchains")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -13,25 +15,7 @@ filegroup(
 )
 
 filegroup(
-    name = "secmgr_debug_tool",
-    srcs = glob(["run/otrp/debug_tool/secmgr_debug_tool.jar"]),
-)
-
-filegroup(
-    name = "otrp_runfiles",
-    srcs = glob([
-        "run/otrp/**/*.sh",
-        "run/otrp/**/*.jar",
-    ]),
-)
-
-filegroup(
-    name = "secmgr_debug",
-    srcs = glob(["run/otrp/debug_tool/secmgr_debug.sh"]),
-)
-
-filegroup(
-    name = "otrp_provision",
+    name = "otrp_provision_exe",
     srcs = glob(["run/otrp/provision_tool/provision_create_ha_by_config.sh"]),
 )
 
@@ -44,7 +28,7 @@ filegroup(
 )
 
 filegroup(
-    name = "otrp_provision_tool",
+    name = "otrp_provision_tool_suite",
     srcs = glob([
         "run/otrp/provision_tool/*.sh",
         "run/otrp/provision_tool/*.jar",
@@ -52,7 +36,7 @@ filegroup(
 )
 
 filegroup(
-    name = "otrp_sign_tool",
+    name = "otrp_sign_tool_suite",
     srcs = glob([
         "run/otrp/sign_tool/*.sh",
         "run/otrp/sign_tool/*.jar",
@@ -60,11 +44,34 @@ filegroup(
 )
 
 filegroup(
-    name = "otrp_elf_tool",
+    name = "otrp_elf_tool_suite",
     srcs = glob([
         "run/otrp/elf_tool/*",
         "run/otrp/sign_tool/*.jar",
     ]),
+)
+
+filegroup(
+    name = "otrp_suite",
+    srcs = [
+        ":otrp_elf_tool_suite",
+        ":otrp_provision_tool_suite",
+        ":otrp_sign_tool_suite",
+    ],
+)
+
+nbl_sdk(
+    name = "%{SDK_NAME}%",
+    host_create_archive_manifest = ":create_archive_manifest",
+    host_far = ":far",
+    otrp_keystore = ":otrp_keystore",
+    otrp_provision_exe = ":otrp_provision_exe",
+    otrp_suite = ":otrp_suite",
+    path = "%{SDK_PATH}%",
+)
+
+declare_toolchains(
+    sdk = "%{SDK_NAME}%",
 )
 
 toolchain(

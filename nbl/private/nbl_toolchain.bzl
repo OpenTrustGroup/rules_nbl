@@ -1,26 +1,14 @@
-load("@io_bazel_rules_nbl//nbl/private:providers.bzl", "NblSDK")
+load("@io_bazel_rules_nbl//nbl/private:providers.bzl", "NebulaSdk")
 
 def _nbl_toolchain_impl(ctx):
-    sdk = ctx.attr.sdk[NblSDK]
-    print(sdk)
-    print(ctx)
-    #native.cc_toolchain(
-    #    name = "aa",
-    #    all_files = sdk.clang,
-    #    compiler_files = "",
-    #    dwp_files = "",
-    #    linker_files = "",
-    #    objcopy_files = "",
-    #    strip_files = "",
-    #    toolchain_config = "",
-    #)
+    return [platform_common.ToolchainInfo(sdk = ctx.attr.sdk[NebulaSdk])]
 
 nbl_toolchain = rule(
     _nbl_toolchain_impl,
     attrs = {
         "sdk": attr.label(
             mandatory = True,
-            providers = [NblSDK],
+            providers = [NebulaSdk],
             cfg = "exec",
             doc = "The SDK this toolchain is based on",
         ),
@@ -28,9 +16,9 @@ nbl_toolchain = rule(
     provides = [platform_common.ToolchainInfo],
 )
 
-def declare_toolchains(host, sdk, builder = None):
-    print(sdk)
-    toolchain_name = "clang_nbl_aarch64"
+# Declare a dummy toolchain used to keep "sdk" and used by rules
+def declare_toolchains(sdk):
+    toolchain_name = "nbl_toolchain_dummy"
     impl_name = toolchain_name + "-impl"
     nbl_toolchain(
         name = impl_name,
@@ -40,14 +28,6 @@ def declare_toolchains(host, sdk, builder = None):
     )
     native.toolchain(
         name = toolchain_name,
-        #toolchain_type = "@io_bazel_rules_nbl//nbl:toolchain",
-        toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
-        exec_compatible_with = [
-            "@bazel_tools//platforms:linux",
-            "@bazel_tools//platforms:x86_64",
-        ],
-        target_compatible_with = [
-            "@platforms//cpu:arm64",
-        ],
+        toolchain_type = "@io_bazel_rules_nbl//nbl:toolchain",
         toolchain = ":" + impl_name,
     )
