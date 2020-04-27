@@ -42,10 +42,47 @@ cc_import(
     visibility = [ "//visibility:public" ]
 )
 
-filegroup(
-    name = "cmake_toolchain",
-    srcs = [
-        "cmake/nebula.toolchain.cmake",
-    ],
+cc_import(
+    name = "nbl_trace_provider",
+    shared_library = "hee/nbl_trace_provider/lib/libnbl_trace_provider.so",
+    hdrs = glob([
+        "hee/nbl_trace_provider/include/**/*.h",
+    ]),
+    visibility = [ "//visibility:public" ]
+)
+
+cc_import(
+    name = "trace",
+    static_library = "hee/lib/libtrace.a",
+    hdrs = glob([
+        "hee/include/trace/*.h",
+    ]),
+    visibility = [ "//visibility:public" ]
+)
+
+cc_import(
+    name = "trace-engine",
+    static_library = "hee/lib/libtrace-engine.a",
+    hdrs = glob([
+        "hee/include/trace-engine/*.h",
+    ]),
+    visibility = [ "//visibility:public" ]
+)
+
+cc_import(
+    name = "zx",
+    static_library = "hee/lib/libzx.a",
+    hdrs = glob([
+        "hee/include/lib/zx/*.h",
+    ]),
+    visibility = [ "//visibility:public" ]
+)
+
+cc_import(
+    name = "fbl",
+    static_library = "hee/lib/libfbl.a",
+    hdrs = glob([
+        "hee/include/fbl/*.h",
+    ]),
     visibility = [ "//visibility:public" ]
 )

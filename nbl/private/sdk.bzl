@@ -61,7 +61,7 @@ def _sdk_build_file(ctx, platform):
     )
 
 def _nbl_lib_impl(ctx):
-    ctx.symlink("../nbl_sdk/hee", "hee")
+    ctx.symlink("../{}/hee".format(ctx.attr.sdk), "hee")
     ctx.template(
         "BUILD.bazel",
         Label("@io_bazel_rules_nbl//nbl/private:nbl_lib.bzl.tpl"),
@@ -69,10 +69,10 @@ def _nbl_lib_impl(ctx):
 
 _nbl_lib = repository_rule(
     implementation = _nbl_lib_impl,
+    attrs = {
+        "sdk": attr.string(),
+    },
 )
-
-def nbl_register_libraries():
-    _nbl_lib(name = "nbl_lib")
 
 def nbl_register_sdk(name = "nbl_sdk", path = None):
     sdk_kinds = ("_nbl_download_sdk", "_nbl_local_sdk")
@@ -85,6 +85,8 @@ def nbl_register_sdk(name = "nbl_sdk", path = None):
         _nbl_local_sdk(name = name, path = path)
     else:
         _nbl_download_sdk(name = name, strip_prefix = "sdk")
+
+    _nbl_lib(name = name + "_lib", sdk = name)
 
     native.register_toolchains("@{}//:clang_fuchsia_aarch64".format(name))
     native.register_toolchains("@{}//:nbl_toolchain_dummy".format(name))
