@@ -23,3 +23,11 @@ NebulaSdk = provider(
         "host",
     ],
 )
+
+OtrpParams = provider(
+    doc = "Contains parameters of Otrp commands",
+    fields = {
+        "substitutions": "The key=val pairs (dict) used for scripts substitution",
+        "runfiles": "The necessary files used for running scripts",
+    },
+)

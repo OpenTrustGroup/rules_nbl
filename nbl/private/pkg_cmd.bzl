@@ -1,12 +1,13 @@
 load(
     "@io_bazel_rules_nbl//nbl/private:providers.bzl",
     "NebulaSdk",
+    "OtrpParams",
     "PackageInfo",
     "SdkHost",
     "SdkOtrp",
 )
 
-def _make_provision_impl(ctx):
+def _otrp_keystore_impl(ctx):
     toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
     sdk = toolchain.sdk
     otrp_provision_exe = sdk.otrp.provision_exe
@@ -29,10 +30,9 @@ def _make_provision_impl(ctx):
         outputs = [ctx.outputs.out],
         tools = otrp_suite,
     )
-    return [PackageInfo()]
 
-_make_provision = rule(
-    implementation = _make_provision_impl,
+_otrp_keystore = rule(
+    implementation = _otrp_keystore_impl,
     attrs = {
         "srcs": attr.label(
             allow_single_file = True,
@@ -44,143 +44,203 @@ _make_provision = rule(
     toolchains = ["@io_bazel_rules_nbl//nbl:toolchain"],
 )
 
-def _register_cmd_launch_impl(ctx):
+def _uuid_impl(ctx):
     exec = ctx.file.srcs
     if PackageInfo in ctx.attr.srcs:
         exec = ctx.attr.srcs[PackageInfo].exec
     script = ctx.actions.declare_file(ctx.label.name + ".sh")
     script_content = """
 #!/bin/bash
-[[ "${{TRACE}}" ]] && set -x
+set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
-[[ $(readelf -n {exec}) =~ offset\\ (0x[0-9a-f]+) ]] || exit 1
-read -r -d '' -a v < <(hexdump -s $((${{BASH_REMATCH[1]}} + 0x18)) -n 16 -e '/1 "%02x"' {exec})
+grok_offset() {{
+  local line
+  while read line; do
+    case "$line" in
+    # Section Headers for .note.nebula.app.manifest
+    #   [ 2] .note.nebula.app.manifest NOTE            00000000000002b8 0002b8 0000a8 00   A  0   0  4
+    *.note.nebula.app.manifest*NOTE*)
+      local words=($line)
+      local off=$(printf '%#u' 0x${{words[4]}})
+      echo $off
+      return 0
+      ;;
+    esac
+  done
+  return 1
+}}
 
+# See |nbl_app_manifest.h| for details
+off=$(($(readelf -W -S {exec} | grok_offset) + 0x18))
+
+# Read 16 bytes (32 chars) into a string
+v=$(hexdump -s ${{off}} -n 16 -e '/1 "%02x"' {exec})
+
+# Fill each field from array values and arrange by endian
 time_low=$(printf %s "${{v:6:2}}${{v:4:2}}${{v:2:2}}${{v:0:2}}")
 time_mid=$(printf %s "${{v:10:2}}${{v:8:2}}")
 time_high_version=$(printf %s "${{v:14:2}}${{v:12:2}}")
 clock_seq=$(printf %s "${{v:16:4}}")
 node=$(printf %s "${{v:20}}")
-
-UUID="${{time_low}}-${{time_mid}}-${{time_high_version}}-${{clock_seq}}-${{node}}"
-echo -n "Launching..."
-PID=`{sh_exec} {sh_opts} {sh_host} /data/nblruncmd ps | grep ${{UUID}} | awk '{{split($1,result,":"); printf result[2]}}'`
-[[ ! -z "${{PID}}" ]] && {sh_exec} {sh_opts} {sh_host} /data/nblruncmd kill ${{PID}}
-{sh_exec} {sh_opts} {sh_host} nbl_daemon -l ${{UUID}}
-echo "Done"
-
-    """.format(
-        exec = exec.short_path,
-        sh_exec = ctx.attr.sh_exec,
-        sh_opts = ctx.attr.sh_opts,
-        sh_host = ctx.attr.sh_host,
-    )
+echo "${{time_low}}-${{time_mid}}-${{time_high_version}}-${{clock_seq}}-${{node}}"
+""".format(exec = exec.short_path)
     ctx.actions.write(script, script_content, is_executable = True)
+
     return [DefaultInfo(
         executable = script,
         runfiles = ctx.runfiles(
-            files = [ctx.file.srcs, exec],
+            files = [exec],
         ),
     )]
 
-_register_cmd_launch = rule(
-    implementation = _register_cmd_launch_impl,
+_uuid = rule(
+    implementation = _uuid_impl,
     attrs = {
-        "srcs": attr.label(allow_single_file = True, mandatory = True),
-        "sh_exec": attr.string(mandatory = True),
-        "sh_opts": attr.string(default = ""),
-        "sh_host": attr.string(default = ""),
+        "srcs": attr.label(
+            allow_single_file = True,
+            mandatory = True,
+        ),
     },
+    outputs = {"out": "%{name}.sh"},
     executable = True,
 )
 
-def _register_cmd_provision_impl(ctx):
-    script = ctx.actions.declare_file(ctx.label.name + ".sh")
-    script_content = """
+_template_provision = """
 #!/bin/bash
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
 {sh_exec} {sh_opts} {sh_host} rm -rf /data/nebula_ta
 {sh_exec} {sh_opts} {sh_host} mkdir -p /data/
-{cp_exec} {cp_opts} {otrp_pkg}/key_store_test {cp_host}/data/nebula_ta
+{cp_exec} {cp_opts} {keystore}/key_store_test {cp_host}/data/nebula_ta
 echo -n "Provisioning..."
 {sh_exec} {sh_opts} {sh_host} nbl_daemon -p /data/nebula_ta
 echo "Done"
-    """.format(
-        sh_exec = ctx.attr.sh_exec,
-        sh_opts = ctx.attr.sh_opts,
-        sh_host = ctx.attr.sh_host,
-        cp_exec = ctx.attr.cp_exec,
-        cp_opts = ctx.attr.cp_opts,
-        cp_host = ctx.attr.cp_host,
-        otrp_pkg = ctx.file.otrp_pkg.short_path,
+"""
+
+# TODO: set -eo pipefail when nblruncmd issue fixed
+_template_launch = """
+#!/bin/bash
+[[ "${{TRACE}}" ]] && set -x
+
+UUID="$({uuid})"
+echo -n "Launching..."
+PID=`{sh_exec} {sh_opts} {sh_host} /data/nblruncmd ps | grep ${{UUID}} | awk '{{split($1,result,":"); printf result[2]}}'`
+[[ ! -z "${{PID}}" ]] && {sh_exec} {sh_opts} {sh_host} /data/nblruncmd kill ${{PID}}
+{sh_exec} {sh_opts} {sh_host} nbl_daemon -l ${{UUID}}
+echo "Done"
+"""
+
+def _register_otrp_cmd_impl(ctx):
+    params = ctx.attr.params[OtrpParams]
+
+    exec = ctx.file.srcs
+    if PackageInfo in ctx.attr.srcs:
+        exec = ctx.attr.srcs[PackageInfo].exec
+
+    script = ctx.actions.declare_file(ctx.label.name + ".sh")
+    script_content = ctx.attr.template.format(
+        **params.substitutions
     )
     ctx.actions.write(script, script_content, is_executable = True)
     return [DefaultInfo(
         executable = script,
         runfiles = ctx.runfiles(
-            files = [ctx.file.srcs, ctx.file.otrp_pkg],
+            files = [exec] + params.runfiles,
         ),
     )]
 
-_register_cmd_provision = rule(
-    implementation = _register_cmd_provision_impl,
+_register_otrp_cmd = rule(
+    implementation = _register_otrp_cmd_impl,
     attrs = {
         "srcs": attr.label(allow_single_file = True, mandatory = True),
-        "sh_exec": attr.string(mandatory = True),
-        "sh_opts": attr.string(default = ""),
-        "sh_host": attr.string(default = ""),
-        "cp_exec": attr.string(mandatory = True),
-        "cp_opts": attr.string(default = ""),
-        "cp_host": attr.string(default = ""),
-        "otrp_pkg": attr.label(allow_single_file = True, mandatory = True),
+        "params": attr.label(mandatory = True, providers = [OtrpParams]),
+        "template": attr.string(mandatory = True),
     },
     executable = True,
 )
 
-def register_cmd_provision(**kwargs):
-    _register_cmd_provision(
-        name = "provision_qemu",
-        sh_exec = "ssh",
-        sh_opts = "-o StrictHostKeyChecking=no",
-        sh_host = "root@192.168.3.53",
-        cp_exec = "scp",
-        cp_opts = "-r -o StrictHostKeyChecking=no",
-        cp_host = "root@192.168.3.53:",
-        otrp_pkg = ":make_provision",
-        **kwargs
-    )
-    _register_cmd_provision(
-        name = "provision_android",
-        sh_exec = "adb",
-        sh_opts = "",
-        sh_host = "shell",
-        cp_exec = "adb",
-        cp_opts = "",
-        cp_host = "push",
-        otrp_pkg = ":make_provision",
-        **kwargs
+def _otrp_params_impl(ctx):
+    selected_device = ctx.attr.device[0]
+
+    if selected_device == "android":
+        return [OtrpParams(
+            substitutions = {
+                "sh_exec": "adb",
+                "sh_opts": "shell",
+                "sh_host": "",
+                "cp_exec": "adb",
+                "cp_opts": "push",
+                "cp_host": "",
+                "uuid": ctx.file.uuid.short_path,
+                "keystore": ctx.file.keystore.short_path,
+            },
+            runfiles = [ctx.file.keystore, ctx.file.uuid],
+        )]
+    elif selected_device == "qemu":
+        return [OtrpParams(
+            substitutions = {
+                "sh_exec": "ssh",
+                "sh_opts": "-o StrictHostKeyChecking=no",
+                "sh_host": "root@192.168.3.53",
+                "cp_exec": "scp",
+                "cp_opts": "-r -o StrictHostKeyChecking=no",
+                "cp_host": "root@192.168.3.53:",
+                "uuid": ctx.file.uuid.short_path,
+                "keystore": ctx.file.keystore.short_path,
+            },
+            runfiles = [ctx.file.keystore, ctx.file.uuid],
+        )]
+    else:
+        fail("Unsupported device: {} (expected 'qemu' or 'android').".format(ctx.attr.device))
+
+_otrp_params = rule(
+    implementation = _otrp_params_impl,
+    attrs = {
+        "device": attr.string_list(mandatory = True),
+        "keystore": attr.label(allow_single_file = True, mandatory = True),
+        "uuid": attr.label(allow_single_file = True, mandatory = True),
+    },
+    provides = [OtrpParams],
+)
+
+def nbl_register_pkgcmds(srcs):
+    # generate otrp keystore
+    _otrp_keystore(
+        name = "otrp_keystore",
+        out = "keystore",
+        sd_privilege = "sd.privilege",
+        srcs = srcs,
     )
 
-def nbl_register_pkgcmds(**kwargs):
-    _make_provision(
-        name = "make_provision",
-        out = "otrp_pkg",
-        sd_privilege = "sd.privilege",
-        **kwargs
+    # generate uuid.sh
+    _uuid(name = "uuid", srcs = srcs)
+
+    native.config_setting(
+        name = "cfg_android",
+        values = {"define": "device=android"},
     )
-    register_cmd_provision(**kwargs)
-    _register_cmd_launch(
-        name = "launch_qemu",
-        sh_exec = "ssh",
-        sh_opts = "-o StrictHostKeyChecking=no",
-        sh_host = "root@192.168.3.53",
-        **kwargs
+
+    # generate providers for different configs
+    _otrp_params(
+        name = "otrp_params",
+        device = select({
+            "cfg_android": ["android"],
+            "//conditions:default": ["qemu"],
+        }),
+        keystore = ":otrp_keystore",
+        uuid = ":uuid",
     )
-    _register_cmd_launch(
-        name = "launch_android",
-        sh_exec = "adb",
-        sh_opts = "",
-        sh_host = "shell",
-        **kwargs
+
+    _register_otrp_cmd(
+        name = "provision",
+        srcs = srcs,
+        params = ":otrp_params",
+        template = _template_provision,
+    )
+
+    _register_otrp_cmd(
+        name = "launch",
+        srcs = srcs,
+        params = ":otrp_params",
+        template = _template_launch,
     )
