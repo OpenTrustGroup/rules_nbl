@@ -252,7 +252,8 @@ def _impl(ctx):
         "%{SDK_SYSROOT_PATH}%/include",
         "%{SDK_SYSROOT_PATH}%/trusty/include",
         "%{SDK_COMPILER_PATH}%/include/c++/v1",
-        "%{SDK_COMPILER_PATH}%/lib/clang/10.0.0/include",
+        "%{SDK_COMPILER_PATH}%/lib/clang/%{SDK_COMPILER_VERSION}%/include",
+        "%{SDK_COMPILER_PATH}%/lib/aarch64-fuchsia/include/c++/v1", # clang7
     ]
 
     tool_paths = [

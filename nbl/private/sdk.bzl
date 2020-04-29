@@ -16,18 +16,38 @@ load(
 )
 
 def _remote_sdk(ctx, urls, strip_prefix, sha256):
-    ctx.download_and_extract(
-        url = urls,
-        stripPrefix = strip_prefix,
-        sha256 = sha256,
-    )
+    if len(urls) == 0:
+        fail("no urls specified")
+    if urls[0].endswith(".tar.gz") or urls[0].endswith(".tar.xz"):
+        if strip_prefix != "":
+            fail("strip_prefix not supported")
+        ctx.download(
+            url = urls,
+            sha256 = sha256,
+            output = "_sdk.tmp",
+        )
+        res = ctx.execute(["tar", "-xf", "_sdk.tmp", "--strip-components=1"])
+        if res.return_code:
+            fail("error extracting Nebula SDK:\n" + res.stdout + res.stderr)
+        ctx.execute(["rm", "_sdk.tmp"])
+    else:
+        ctx.download_and_extract(
+            url = urls,
+            stripPrefix = strip_prefix,
+            sha256 = sha256,
+        )
 
 def _nbl_download_sdk_impl(ctx):
-    sdks = SDK_REPOSITORIES[DEFAULT_VERSION]
+    if ctx.attr.version:
+        if ctx.attr.version not in SDK_REPOSITORIES:
+            fail("unsupported sdk version: {}".format(ctx.attr.version))
+        sdks = SDK_REPOSITORIES[ctx.attr.version]
+    else:
+        sdks = SDK_REPOSITORIES[DEFAULT_VERSION]
     platform = "linux_amd64"
     filename, sha256 = sdks[platform]
-    _sdk_build_file(ctx, platform)
     _remote_sdk(ctx, [url.format(filename) for url in ctx.attr.urls], ctx.attr.strip_prefix, sha256)
+    _sdk_build_file(ctx, platform)
 
 _nbl_download_sdk = repository_rule(
     _nbl_download_sdk_impl,
@@ -39,8 +59,17 @@ _nbl_download_sdk = repository_rule(
     },
 )
 
+def _sdk_clang_version(ctx):
+    res = ctx.execute(["ls", "toolchains/clang/lib/clang/"])
+    if res.return_code != 0:
+        fail("SDK clang not found")
+    if len(res.stdout.strip().split(".")) == 3:
+        return res.stdout.strip()
+    fail("Could not detect SDK clang version")
+
 def _sdk_build_file(ctx, platform):
     ctx.file("ROOT")
+    clang_version = _sdk_clang_version(ctx)
     os, _, arch = platform.partition("_")
     ctx.template(
         "BUILD.bazel",
@@ -57,6 +86,7 @@ def _sdk_build_file(ctx, platform):
         substitutions = {
             "%{SDK_COMPILER_PATH}%": str(ctx.path("toolchains/clang")),
             "%{SDK_SYSROOT_PATH}%": str(ctx.path("hee")),
+            "%{SDK_COMPILER_VERSION}%": clang_version,
         },
     )
 
@@ -74,17 +104,20 @@ _nbl_lib = repository_rule(
     },
 )
 
-def nbl_register_sdk(name = "nbl_sdk", path = None):
+def nbl_register_sdk(name = "nbl_sdk", version = None, path = None):
     sdk_kinds = ("_nbl_download_sdk", "_nbl_local_sdk")
     existing_rules = native.existing_rules()
     sdk_rules = [r for r in existing_rules.values() if r["kind"] in sdk_kinds]
     if len(sdk_rules) > 0:
         fail("already have one sdk registered.")
 
+    if version and path:
+        fail("version and path must not both be set")
+
     if path:
         _nbl_local_sdk(name = name, path = path)
     else:
-        _nbl_download_sdk(name = name, strip_prefix = "sdk")
+        _nbl_download_sdk(name = name, version = version)
 
     _nbl_lib(name = name + "_lib", sdk = name)
 
@@ -93,9 +126,9 @@ def nbl_register_sdk(name = "nbl_sdk", path = None):
 
 def _nbl_local_sdk_impl(ctx):
     platform = "linux_amd64"
-    _sdk_build_file(ctx, platform)
     for entry in ["hee", "host", "run", "toolchains"]:
         ctx.symlink(ctx.attr.path + "/" + entry, entry)
+    _sdk_build_file(ctx, platform)
 
 _nbl_local_sdk = repository_rule(
     _nbl_local_sdk_impl,
