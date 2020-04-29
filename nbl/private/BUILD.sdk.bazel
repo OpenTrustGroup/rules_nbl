@@ -60,6 +60,14 @@ filegroup(
     ],
 )
 
+filegroup(
+    name = "nblruncmd",
+    srcs = select({
+        "@io_bazel_rules_nbl//nbl:cfg_android": ["android/bin/nblruncmd"],
+        "//conditions:default": ["ree/bin/nblruncmd"],
+    }),
+)
+
 nbl_sdk(
     name = "%{SDK_NAME}%",
     host_create_archive_manifest = ":create_archive_manifest",
@@ -68,6 +76,7 @@ nbl_sdk(
     otrp_provision_exe = ":otrp_provision_exe",
     otrp_suite = ":otrp_suite",
     path = "%{SDK_PATH}%",
+    target_nblruncmd = ":nblruncmd",
 )
 
 declare_toolchains(

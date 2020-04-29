@@ -112,20 +112,20 @@ set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 {sh_exec} {sh_opts} {sh_host} rm -rf /data/nebula_ta
 {sh_exec} {sh_opts} {sh_host} mkdir -p /data/
 {cp_exec} {cp_opts} {keystore}/key_store_test {cp_host}/data/nebula_ta
+{cp_exec} {cp_opts} {nblruncmd} {cp_host}/data/nblruncmd
+{sh_exec} {sh_opts} {sh_host} chmod 755 /data/nblruncmd
 echo -n "Provisioning..."
 {sh_exec} {sh_opts} {sh_host} nbl_daemon -p /data/nebula_ta
 echo "Done"
 """
 
-# TODO: set -eo pipefail when nblruncmd issue fixed
 _template_launch = """
 #!/bin/bash
-[[ "${{TRACE}}" ]] && set -x
+set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
 UUID="$({uuid})"
 echo -n "Launching..."
-PID=`{sh_exec} {sh_opts} {sh_host} /data/nblruncmd ps | grep ${{UUID}} | awk '{{split($1,result,":"); printf result[2]}}'`
-[[ ! -z "${{PID}}" ]] && {sh_exec} {sh_opts} {sh_host} /data/nblruncmd kill ${{PID}}
+{sh_exec} {sh_opts} {sh_host} /data/nblruncmd killall ${{UUID}} || echo
 {sh_exec} {sh_opts} {sh_host} nbl_daemon -l ${{UUID}}
 echo "Done"
 """
@@ -160,38 +160,38 @@ _register_otrp_cmd = rule(
 )
 
 def _otrp_params_impl(ctx):
+    toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
+    sdk = toolchain.sdk
     selected_device = ctx.attr.device[0]
 
+    runfiles = [ctx.file.keystore, ctx.file.uuid, sdk.target.nblruncmd]
+    substitutions = {
+        "uuid": ctx.file.uuid.short_path,
+        "keystore": ctx.file.keystore.short_path,
+        "nblruncmd": sdk.target.nblruncmd.short_path,
+    }
     if selected_device == "android":
-        return [OtrpParams(
-            substitutions = {
-                "sh_exec": "adb",
-                "sh_opts": "shell",
-                "sh_host": "",
-                "cp_exec": "adb",
-                "cp_opts": "push",
-                "cp_host": "",
-                "uuid": ctx.file.uuid.short_path,
-                "keystore": ctx.file.keystore.short_path,
-            },
-            runfiles = [ctx.file.keystore, ctx.file.uuid],
-        )]
+        substitutions.update({
+            "sh_exec": "adb",
+            "sh_opts": "shell",
+            "sh_host": "",
+            "cp_exec": "adb",
+            "cp_opts": "push",
+            "cp_host": "",
+        })
     elif selected_device == "qemu":
-        return [OtrpParams(
-            substitutions = {
-                "sh_exec": "ssh",
-                "sh_opts": "-o StrictHostKeyChecking=no",
-                "sh_host": "root@192.168.3.53",
-                "cp_exec": "scp",
-                "cp_opts": "-r -o StrictHostKeyChecking=no",
-                "cp_host": "root@192.168.3.53:",
-                "uuid": ctx.file.uuid.short_path,
-                "keystore": ctx.file.keystore.short_path,
-            },
-            runfiles = [ctx.file.keystore, ctx.file.uuid],
-        )]
+        substitutions.update({
+            "sh_exec": "ssh",
+            "sh_opts": "-o StrictHostKeyChecking=no",
+            "sh_host": "root@192.168.3.53",
+            "cp_exec": "scp",
+            "cp_opts": "-r -o StrictHostKeyChecking=no",
+            "cp_host": "root@192.168.3.53:",
+        })
     else:
         fail("Unsupported device: {} (expected 'qemu' or 'android').".format(ctx.attr.device))
+
+    return [OtrpParams(substitutions = substitutions, runfiles = runfiles)]
 
 _otrp_params = rule(
     implementation = _otrp_params_impl,
@@ -201,6 +201,7 @@ _otrp_params = rule(
         "uuid": attr.label(allow_single_file = True, mandatory = True),
     },
     provides = [OtrpParams],
+    toolchains = ["@io_bazel_rules_nbl//nbl:toolchain"],
 )
 
 def nbl_register_pkgcmds(srcs):
@@ -215,16 +216,11 @@ def nbl_register_pkgcmds(srcs):
     # generate uuid.sh
     _uuid(name = "uuid", srcs = srcs)
 
-    native.config_setting(
-        name = "cfg_android",
-        values = {"define": "device=android"},
-    )
-
     # generate providers for different configs
     _otrp_params(
         name = "otrp_params",
         device = select({
-            "cfg_android": ["android"],
+            "@io_bazel_rules_nbl//nbl:cfg_android": ["android"],
             "//conditions:default": ["qemu"],
         }),
         keystore = ":otrp_keystore",

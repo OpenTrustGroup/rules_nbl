@@ -9,6 +9,7 @@ load(
     "NebulaSdk",
     "SdkHost",
     "SdkOtrp",
+    "SdkTarget",
 )
 load(
     "@io_bazel_rules_nbl//nbl/private:nbl_toolchain.bzl",
@@ -150,6 +151,9 @@ def _nbl_sdk_impl(ctx):
             create_archive_manifest = ctx.file.host_create_archive_manifest,
             far = ctx.file.host_far,
         ),
+        target = SdkTarget(
+            nblruncmd = ctx.file.target_nblruncmd,
+        ),
     )]
 
 nbl_sdk = rule(
@@ -161,6 +165,7 @@ nbl_sdk = rule(
         "otrp_suite": attr.label(allow_files = True, mandatory = True),
         "host_create_archive_manifest": attr.label(allow_single_file = True, mandatory = True),
         "host_far": attr.label(allow_single_file = True, mandatory = True),
+        "target_nblruncmd": attr.label(allow_single_file = True, mandatory = True),
     },
     provides = [NebulaSdk],
 )

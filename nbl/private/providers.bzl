@@ -15,12 +15,19 @@ SdkHost = provider(
     ],
 )
 
+SdkTarget = provider(
+    fields = [
+        "nblruncmd",
+    ],
+)
+
 NebulaSdk = provider(
     fields = [
         "name",
         "path",
         "otrp",
         "host",
+        "target",
     ],
 )
 

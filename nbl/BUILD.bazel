@@ -1,3 +1,13 @@
+config_setting(
+    name = "cfg_android",
+    values = {"define": "device=android"},
+)
+
+config_setting(
+    name = "cfg_qemu",
+    values = {"define": "device=qemu"},
+)
+
 toolchain_type(
     name = "toolchain",
     visibility = ["//visibility:public"],
