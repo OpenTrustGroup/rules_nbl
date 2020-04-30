@@ -127,7 +127,7 @@ def nbl_register_sdk(name = "nbl_sdk", version = None, path = None):
 
 def _nbl_local_sdk_impl(ctx):
     platform = "linux_amd64"
-    for entry in ["hee", "host", "run", "toolchains"]:
+    for entry in ["android", "hee", "host", "ree", "run", "toolchains"]:
         ctx.symlink(ctx.attr.path + "/" + entry, entry)
     _sdk_build_file(ctx, platform)
 
