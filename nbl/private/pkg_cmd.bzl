@@ -1,10 +1,23 @@
+# Copyright 2020 The GoldenRiver Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Command helper and rules for use in projects BUILD files."""
+
 load(
     "@io_bazel_rules_nbl//nbl/private:providers.bzl",
-    "NebulaSdk",
-    "OtrpParams",
     "PackageInfo",
-    "SdkHost",
-    "SdkOtrp",
+    "ScriptInfo",
 )
 
 def _otrp_keystore_impl(ctx):
@@ -131,7 +144,7 @@ echo "Done"
 """
 
 def _register_otrp_cmd_impl(ctx):
-    params = ctx.attr.params[OtrpParams]
+    params = ctx.attr.params[ScriptInfo]
 
     exec = ctx.file.srcs
     if PackageInfo in ctx.attr.srcs:
@@ -153,7 +166,7 @@ _register_otrp_cmd = rule(
     implementation = _register_otrp_cmd_impl,
     attrs = {
         "srcs": attr.label(allow_single_file = True, mandatory = True),
-        "params": attr.label(mandatory = True, providers = [OtrpParams]),
+        "params": attr.label(mandatory = True, providers = [ScriptInfo]),
         "template": attr.string(mandatory = True),
     },
     executable = True,
@@ -191,7 +204,7 @@ def _otrp_params_impl(ctx):
     else:
         fail("Unsupported device: {} (expected 'qemu' or 'android').".format(ctx.attr.device))
 
-    return [OtrpParams(substitutions = substitutions, runfiles = runfiles)]
+    return [ScriptInfo(substitutions = substitutions, runfiles = runfiles)]
 
 _otrp_params = rule(
     implementation = _otrp_params_impl,
@@ -200,11 +213,18 @@ _otrp_params = rule(
         "keystore": attr.label(allow_single_file = True, mandatory = True),
         "uuid": attr.label(allow_single_file = True, mandatory = True),
     },
-    provides = [OtrpParams],
+    provides = [ScriptInfo],
     toolchains = ["@io_bazel_rules_nbl//nbl:toolchain"],
 )
 
 def nbl_register_pkgcmds(srcs):
+    """Register basic commands for cc_binary or pkg_far.
+
+    Args:
+      srcs: the cc_binary, or pkg_far to support basic
+        commands: provision, launch ... etc.
+    """
+
     # generate otrp keystore
     _otrp_keystore(
         name = "otrp_keystore",

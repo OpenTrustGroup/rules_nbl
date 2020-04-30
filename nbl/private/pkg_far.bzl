@@ -1,3 +1,19 @@
+# Copyright 2020 The GoldenRiver Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Package (FAR) helper and rules for use in projects BUILD files."""
+
 load(
     "@io_bazel_rules_nbl//nbl/private:providers.bzl",
     "PackageInfo",
@@ -11,13 +27,11 @@ def _pkg_far_impl(ctx):
 
     data_files = []
     for f in ctx.files.data:
-        if f.path.startswith(ctx.label.package):
-            # remove "//package_path" and trailing "/"
-            src_path = f.path
-            dst_path = f.path[len(ctx.label.package) + 1:]
-            data_files.append("%s=%s" % (dst_path, src_path))
-        else:
-            print("%s not startswith %s, ignored" % (f.path, ctx.label.package))
+        # The original f.path looks like 'hello_far/data/data3',
+        # and by design the manifest needs 'data/data3', so remove hello_far/'.
+        src_path = f.path
+        dst_path = f.path[len(ctx.label.package) + 1:]
+        data_files.append("%s=%s" % (dst_path, src_path))
 
     archive_manifest = ctx.actions.declare_file("archive_manifest")
 
@@ -38,7 +52,7 @@ def _pkg_far_impl(ctx):
     )
     return [PackageInfo(exec = ctx.file.exec)]
 
-_real_pkg_far = rule(
+_pkg_far = rule(
     implementation = _pkg_far_impl,
     attrs = {
         "exec": attr.label(allow_single_file = True, mandatory = True),
@@ -53,4 +67,4 @@ _real_pkg_far = rule(
 def pkg_far(**kwargs):
     meta = kwargs.get("meta") or "meta/sandbox"
     rscs = kwargs.get("rscs") or "resources/manifest.json"
-    _real_pkg_far(out = kwargs["name"] + ".far", meta = meta, rscs = rscs, **kwargs)
+    _pkg_far(out = kwargs["name"] + ".far", meta = meta, rscs = rscs, **kwargs)

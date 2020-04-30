@@ -1,19 +1,30 @@
+# Copyright 2020 The GoldenRiver Authors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Sdk helper and rules definitions"""
+
 load(
     "@io_bazel_rules_nbl//nbl/private:sdk_list.bzl",
     "DEFAULT_VERSION",
-    "MIN_SUPPORTED_VERSION",
     "SDK_REPOSITORIES",
 )
 load(
     "@io_bazel_rules_nbl//nbl/private:providers.bzl",
-    "NebulaSdk",
-    "SdkHost",
-    "SdkOtrp",
-    "SdkTarget",
-)
-load(
-    "@io_bazel_rules_nbl//nbl/private:nbl_toolchain.bzl",
-    "declare_toolchains",
+    "HostInfo",
+    "NebulaSdkInfo",
+    "OtrpInfo",
+    "TargetInfo",
 )
 
 def _remote_sdk(ctx, urls, strip_prefix, sha256):
@@ -29,7 +40,7 @@ def _remote_sdk(ctx, urls, strip_prefix, sha256):
         )
         res = ctx.execute(["tar", "-xf", "_sdk.tmp", "--strip-components=1"])
         if res.return_code:
-            fail("error extracting Nebula SDK:\n" + res.stdout + res.stderr)
+            fail("error extracting SDK:\n" + res.stdout + res.stderr)
         ctx.execute(["rm", "_sdk.tmp"])
     else:
         ctx.download_and_extract(
@@ -106,6 +117,14 @@ _nbl_lib = repository_rule(
 )
 
 def nbl_register_sdk(name = "nbl_sdk", version = None, path = None):
+    """Register a local/remote sdk, libs and toolchains.
+
+    Args:
+      name: The sdk name, used as label to referenced in other rules.
+      version: The sdk version. ex. 1.0.17.1
+      path: The absolute path to local sdk.
+    """
+
     sdk_kinds = ("_nbl_download_sdk", "_nbl_local_sdk")
     existing_rules = native.existing_rules()
     sdk_rules = [r for r in existing_rules.values() if r["kind"] in sdk_kinds]
@@ -139,19 +158,19 @@ _nbl_local_sdk = repository_rule(
 )
 
 def _nbl_sdk_impl(ctx):
-    return [NebulaSdk(
+    return [NebulaSdkInfo(
         name = ctx.attr.name,
         path = ctx.attr.path,
-        otrp = SdkOtrp(
+        otrp = OtrpInfo(
             provision_exe = ctx.file.otrp_provision_exe,
             keystore = ctx.file.otrp_keystore,
             suite = ctx.files.otrp_suite,
         ),
-        host = SdkHost(
+        host = HostInfo(
             create_archive_manifest = ctx.file.host_create_archive_manifest,
             far = ctx.file.host_far,
         ),
-        target = SdkTarget(
+        target = TargetInfo(
             nblruncmd = ctx.file.target_nblruncmd,
         ),
     )]
@@ -167,5 +186,5 @@ nbl_sdk = rule(
         "host_far": attr.label(allow_single_file = True, mandatory = True),
         "target_nblruncmd": attr.label(allow_single_file = True, mandatory = True),
     },
-    provides = [NebulaSdk],
+    provides = [NebulaSdkInfo],
 )
