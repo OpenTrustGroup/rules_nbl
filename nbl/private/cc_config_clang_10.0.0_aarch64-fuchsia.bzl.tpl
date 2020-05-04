@@ -126,7 +126,6 @@ def _impl(ctx):
                         flags = [
                             "--target=aarch64-fuchsia",
                             "--sysroot=%{SYSROOT_PATH}%",
-                            "-I%{SYSROOT_PATH}%/trusty/include",
                         ],
                     ),
                 ],
@@ -250,10 +249,8 @@ def _impl(ctx):
 
     cxx_builtin_include_directories = [
         "%{SYSROOT_PATH}%/include",
-        "%{SYSROOT_PATH}%/trusty/include",
         "%{COMPILER_PATH}%/include/c++/v1",
         "%{COMPILER_PATH}%/lib/clang/%{COMPILER_VERSION}%/include",
-        "%{COMPILER_PATH}%/lib/aarch64-fuchsia/include/c++/v1", # clang7
     ]
 
     tool_paths = [
