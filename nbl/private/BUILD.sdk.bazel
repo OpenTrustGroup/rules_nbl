@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load(":cc_toolchain_config.bzl", "cc_toolchain_config")
-load("@rules_cc//cc:defs.bzl", "cc_toolchain")
 load("@io_bazel_rules_nbl//nbl/private:sdk.bzl", "nbl_sdk")
-load("@io_bazel_rules_nbl//nbl/private:nbl_toolchain.bzl", "declare_toolchains")
+load("@io_bazel_rules_nbl//nbl/private:nbl_toolchain.bzl", "declare_nbl_toolchain")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -91,44 +89,13 @@ nbl_sdk(
     target_nblruncmd = ":nblruncmd",
 )
 
-declare_toolchains(
-    sdk = "%{SDK_NAME}%",
-)
-
-toolchain(
-    name = "clang_fuchsia_aarch64",
-    exec_compatible_with = [
-        "@bazel_tools//platforms:linux",
-        "@bazel_tools//platforms:x86_64",
-    ],
-    target_compatible_with = [
-        "@platforms//cpu:arm64",
-    ],
-    toolchain = ":clang_fuchsia_aarch64-impl",
-    toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
-)
-
-cc_toolchain(
-    name = "clang_fuchsia_aarch64-impl",
-    all_files = ":all",
-    compiler_files = ":all",
-    dwp_files = ":empty",
-    linker_files = ":all",
-    objcopy_files = ":all",
-    strip_files = ":all",
-    toolchain_config = ":aarch64_config",
-)
-
-cc_toolchain_config(
-    name = "aarch64_config",
-)
+declare_nbl_toolchain(sdk = "%{SDK_NAME}%")
 
 filegroup(
     name = "all",
     srcs = glob([
         "hee/**",
         "host/**",
-        "toolchains/clang/**",
     ]),
 )
 

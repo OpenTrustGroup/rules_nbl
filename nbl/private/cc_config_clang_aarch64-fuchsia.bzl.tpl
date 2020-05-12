@@ -125,8 +125,8 @@ def _impl(ctx):
                     flag_group(
                         flags = [
                             "--target=aarch64-fuchsia",
-                            "--sysroot=%{SDK_SYSROOT_PATH}%",
-                            "-I%{SDK_SYSROOT_PATH}%/trusty/include",
+                            "--sysroot=%{SYSROOT_PATH}%",
+                            "-I%{SYSROOT_PATH}%/trusty/include",
                         ],
                     ),
                 ],
@@ -187,7 +187,7 @@ def _impl(ctx):
                         flags = [
                             "-no-canonical-prefixes",
                             "--target=aarch64-fuchsia",
-                            "--sysroot=%{SDK_SYSROOT_PATH}%",
+                            "--sysroot=%{SYSROOT_PATH}%",
                             "-lfdio",
                             "-lzircon",
                             "-lc",
@@ -249,39 +249,39 @@ def _impl(ctx):
     ]
 
     cxx_builtin_include_directories = [
-        "%{SDK_SYSROOT_PATH}%/include",
-        "%{SDK_SYSROOT_PATH}%/trusty/include",
-        "%{SDK_COMPILER_PATH}%/include/c++/v1",
-        "%{SDK_COMPILER_PATH}%/lib/clang/%{SDK_COMPILER_VERSION}%/include",
-        "%{SDK_COMPILER_PATH}%/lib/aarch64-fuchsia/include/c++/v1", # clang7
+        "%{SYSROOT_PATH}%/include",
+        "%{SYSROOT_PATH}%/trusty/include",
+        "%{COMPILER_PATH}%/include/c++/v1",
+        "%{COMPILER_PATH}%/lib/clang/%{COMPILER_VERSION}%/include",
+        "%{COMPILER_PATH}%/lib/aarch64-fuchsia/include/c++/v1", # clang7
     ]
 
     tool_paths = [
-        tool_path(name = "ar", path = "%{SDK_COMPILER_PATH}%/bin/llvm-ar"),
+        tool_path(name = "ar", path = "%{COMPILER_PATH}%/bin/llvm-ar"),
         tool_path(name = "compat-ld", path = "/bin/false"),
-        tool_path(name = "cpp", path = "%{SDK_COMPILER_PATH}%/bin/clang++"),
-        tool_path(name = "dwp", path = "%{SDK_COMPILER_PATH}%/bin/llvm-dwp"),
-        tool_path(name = "gcc", path = "%{SDK_COMPILER_PATH}%/bin/clang"),
-        tool_path(name = "gcov", path = "%{SDK_COMPILER_PATH}%/bin/llvm-cov"),
-        tool_path(name = "ld", path = "%{SDK_COMPILER_PATH}%/bin/clang++"),
-        tool_path(name = "nm", path = "%{SDK_COMPILER_PATH}%/bin/llvm-nm"),
-        tool_path(name = "objcopy", path = "%{SDK_COMPILER_PATH}%/bin/llvm-objcopy"),
-        tool_path(name = "objdump", path = "%{SDK_COMPILER_PATH}%/bin/llvm-objdump"),
-        tool_path(name = "strip", path = "%{SDK_COMPILER_PATH}%/bin/llvm-objcopy"),
+        tool_path(name = "cpp", path = "%{COMPILER_PATH}%/bin/clang++"),
+        tool_path(name = "dwp", path = "%{COMPILER_PATH}%/bin/llvm-dwp"),
+        tool_path(name = "gcc", path = "%{COMPILER_PATH}%/bin/clang"),
+        tool_path(name = "gcov", path = "%{COMPILER_PATH}%/bin/llvm-cov"),
+        tool_path(name = "ld", path = "%{COMPILER_PATH}%/bin/clang++"),
+        tool_path(name = "nm", path = "%{COMPILER_PATH}%/bin/llvm-nm"),
+        tool_path(name = "objcopy", path = "%{COMPILER_PATH}%/bin/llvm-objcopy"),
+        tool_path(name = "objdump", path = "%{COMPILER_PATH}%/bin/llvm-objdump"),
+        tool_path(name = "strip", path = "%{COMPILER_PATH}%/bin/llvm-objcopy"),
     ]
 
     action_configs = [
         action_config(
             action_name = ACTION_NAMES.cpp_compile,
-            tools = [tool(path = "%{SDK_COMPILER_PATH}%/bin/clang++")],
+            tools = [tool(path = "%{COMPILER_PATH}%/bin/clang++")],
         ),
         action_config(
             action_name = ACTION_NAMES.cpp_link_executable,
-            tools = [tool(path = "%{SDK_COMPILER_PATH}%/bin/clang++")],
+            tools = [tool(path = "%{COMPILER_PATH}%/bin/clang++")],
         ),
         action_config(
             action_name = ACTION_NAMES.strip,
-            tools = [tool(path = "%{SDK_COMPILER_PATH}%/bin/llvm-objcopy")],
+            tools = [tool(path = "%{COMPILER_PATH}%/bin/llvm-objcopy")],
             flag_sets = [
                 flag_set(
                     flag_groups = [

@@ -59,7 +59,7 @@ def _nbl_download_sdk_impl(ctx):
     platform = "linux_amd64"
     filename, sha256 = sdks[platform]
     _remote_sdk(ctx, [url.format(filename) for url in ctx.attr.urls], ctx.attr.strip_prefix, sha256)
-    _sdk_build_file(ctx, platform)
+    _sdk_build_file(ctx)
 
 _nbl_download_sdk = repository_rule(
     _nbl_download_sdk_impl,
@@ -71,18 +71,73 @@ _nbl_download_sdk = repository_rule(
     },
 )
 
-def _sdk_clang_version(ctx):
-    res = ctx.execute(["ls", "toolchains/clang/lib/clang/"])
-    if res.return_code != 0:
-        fail("SDK clang not found")
-    if len(res.stdout.strip().split(".")) == 3:
-        return res.stdout.strip()
-    fail("Could not detect SDK clang version")
+def _detect_compiler_version(ctx, compiler_path, compiler_target):
+    #$CLANG_ROOT/lib/clang/10.0.0
+    res = ctx.execute(["ls", "{}/lib/clang/".format(compiler_path)])
+    if res.return_code == 0:
+        if len(res.stdout.strip().split(".")) == 3:
+            return res.stdout.strip()
+        fail("Clang version not found")
 
-def _sdk_build_file(ctx, platform):
+    #$GCC_ROOT/lib/gcc/aarch64-linux-gnu/6.2.1
+    res = ctx.execute(["ls", "{}/lib/gcc/{}/".format(compiler_path, compiler_target)])
+    if res.return_code == 0:
+        if len(res.stdout.strip().split(".")) == 3:
+            return res.stdout.strip()
+        fail("Gcc version not found")
+
+    fail("Could not detect compiler version")
+
+def _detect_compiler_type(ctx, compiler_path, compiler_target):
+    res = ctx.execute(["ls", "{}/bin/{}-gcc".format(compiler_path, compiler_target)])
+    if res.return_code == 0:
+        return "gcc"
+
+    res = ctx.execute(["ls", "{}/bin/clang".format(compiler_path)])
+    if res.return_code == 0:
+        return "clang"
+
+    fail("Could not detect compiler type")
+
+# NOTE: Supports Linaro/ARM toolchain sysroot only.
+def _detect_sysroot_cpp_version(ctx, sysroot_path):
+    res = ctx.execute(["ls", "{}/include/c++".format(sysroot_path)])
+    if res.return_code == 0:
+        if len(res.stdout.strip().split(".")) == 3:
+            return res.stdout.strip()
+        fail("Sysroot C++ version not found")
+    fail("Could not detect sysroot c++ version")
+
+def _cc_build_file(ctx, compiler_target, compiler_path, sysroot_path):
+    compiler_type = _detect_compiler_type(ctx, compiler_path, compiler_target)
+    compiler_version = _detect_compiler_version(ctx, compiler_path, compiler_target)
+    sysroot_cpp_version = _detect_sysroot_cpp_version(ctx, sysroot_path)
+
+    print(compiler_type)
+    print(compiler_version)
+    print(sysroot_cpp_version)
+
+    ctx.template(
+        "BUILD.bazel",
+        Label("@io_bazel_rules_nbl//nbl/private:BUILD.compiler.bazel"),
+        substitutions = {
+            "%{COMPILER_TARGET}%": compiler_target,
+        },
+    )
+    ctx.template(
+        "cc_toolchain_config.bzl",
+        Label("@io_bazel_rules_nbl//nbl/private:cc_config_{}_{}_{}.bzl.tpl".format(compiler_type, compiler_version, compiler_target)),
+        substitutions = {
+            "%{COMPILER_TARGET}%": compiler_target,
+            "%{COMPILER_PATH}%": str(ctx.path(compiler_path)),
+            "%{COMPILER_VERSION}%": compiler_version,
+            "%{SYSROOT_PATH}%": str(ctx.path(sysroot_path)),
+            "%{SYSROOT_CPP_VERSION}%": sysroot_cpp_version,
+        },
+    )
+
+def _sdk_build_file(ctx):
     ctx.file("ROOT")
-    clang_version = _sdk_clang_version(ctx)
-    os, _, arch = platform.partition("_")
     ctx.template(
         "BUILD.bazel",
         Label("@io_bazel_rules_nbl//nbl/private:BUILD.sdk.bazel"),
@@ -90,15 +145,6 @@ def _sdk_build_file(ctx, platform):
         substitutions = {
             "%{SDK_NAME}%": ctx.name,
             "%{SDK_PATH}%": str(ctx.path(".")),
-        },
-    )
-    ctx.template(
-        "cc_toolchain_config.bzl",
-        Label("@io_bazel_rules_nbl//nbl/private:cc_toolchain_config.bzl.tpl"),
-        substitutions = {
-            "%{SDK_COMPILER_PATH}%": str(ctx.path("toolchains/clang")),
-            "%{SDK_SYSROOT_PATH}%": str(ctx.path("hee")),
-            "%{SDK_COMPILER_VERSION}%": clang_version,
         },
     )
 
@@ -125,11 +171,11 @@ def nbl_register_sdk(name = "nbl_sdk", version = None, path = None):
       path: The absolute path to local sdk.
     """
 
-    sdk_kinds = ("_nbl_download_sdk", "_nbl_local_sdk")
+    sdk_kinds = ("_nbl_download_sdk", "_nbl_local_sdk", "_nbl_local_cc")
     existing_rules = native.existing_rules()
     sdk_rules = [r for r in existing_rules.values() if r["kind"] in sdk_kinds]
     if len(sdk_rules) > 0:
-        fail("already have one sdk registered.")
+        fail("already have one sdk or toolchain registered.")
 
     if version and path:
         fail("version and path must not both be set")
@@ -139,21 +185,29 @@ def nbl_register_sdk(name = "nbl_sdk", version = None, path = None):
     else:
         _nbl_download_sdk(name = name, version = version)
 
-    _nbl_lib(name = name + "_lib", sdk = name)
+    print("nbl_register_sdk %s" % path)
+    compiler_target = "aarch64-fuchsia"
+    compiler_path = "../{}/toolchains/clang".format(name)
+    sysroot_path = "../{}/hee".format(name)
 
-    native.register_toolchains("@{}//:clang_fuchsia_aarch64".format(name))
+    #compiler_path = "@{}//:compiler_path"
+    #sysroot_path = "@{}//:sysroot_path"
+    nbl_register_toolchain(compiler_target + "_cc", compiler_target, compiler_path, sysroot_path)
+
+    # TODO: support compiler "aarch64-linux-gnu" registration for sdk
+
+    _nbl_lib(name = name + "_lib", sdk = name)
     native.register_toolchains("@{}//:nbl_toolchain_dummy".format(name))
 
 def _nbl_local_sdk_impl(ctx):
-    platform = "linux_amd64"
     for entry in ["android", "hee", "host", "ree", "run", "toolchains"]:
         ctx.symlink(ctx.attr.path + "/" + entry, entry)
-    _sdk_build_file(ctx, platform)
+    _sdk_build_file(ctx)
 
 _nbl_local_sdk = repository_rule(
     _nbl_local_sdk_impl,
     attrs = {
-        "path": attr.string(),
+        "path": attr.string(mandatory = True),
     },
 )
 
@@ -187,4 +241,23 @@ nbl_sdk = rule(
         "target_nblruncmd": attr.label(allow_single_file = True, mandatory = True),
     },
     provides = [NebulaSdkInfo],
+)
+
+def nbl_register_toolchain(name, target, compiler_path, sysroot_path):
+    # TODO:  prevent > 1 toolchain registered for same target
+    _nbl_cc_toolchain(name = name, target = target, compiler = compiler_path, sysroot = sysroot_path)
+    native.register_toolchains("@{}//:{}".format(name, target))
+
+def _nbl_cc_toolchain_impl(ctx):
+    for entry in ["bin", "include", "lib", "libexec", "share"]:
+        ctx.symlink(ctx.attr.compiler + "/" + entry, entry)
+    _cc_build_file(ctx, ctx.attr.target, ctx.attr.compiler, ctx.attr.sysroot)
+
+_nbl_cc_toolchain = repository_rule(
+    _nbl_cc_toolchain_impl,
+    attrs = {
+        "target": attr.string(mandatory = True),
+        "compiler": attr.string(mandatory = True),
+        "sysroot": attr.string(mandatory = True),
+    },
 )

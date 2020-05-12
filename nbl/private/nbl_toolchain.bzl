@@ -32,8 +32,13 @@ nbl_toolchain = rule(
     provides = [platform_common.ToolchainInfo],
 )
 
-# Declare a dummy toolchain used to keep "sdk" and used by rules
-def declare_toolchains(sdk):
+def declare_nbl_toolchain(sdk):
+    """Declare a dummy toolchain, provides only NebulaSdkInfo to others.
+
+    Args:
+      sdk: The sdk label, saved as an NebulaSdkInfo provider.
+    """
+
     toolchain_name = "nbl_toolchain_dummy"
     impl_name = toolchain_name + "-impl"
     nbl_toolchain(
