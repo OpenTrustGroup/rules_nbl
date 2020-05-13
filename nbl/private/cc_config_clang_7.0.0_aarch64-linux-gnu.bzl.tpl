@@ -126,8 +126,7 @@ def _impl(ctx):
                         flags = [
                             "--target=aarch64-linux-gnu",
                             "--sysroot=%{SYSROOT_PATH}%/libc",
-                            # clang7 needs the following to find crt* stuffs.
-                            "--gcc-toolchain=%{SYSROOT_PATH}%/../",
+                            "--gcc-toolchain=%{GCC_TOOLCHAIN_PATH}%",
                         ],
                     ),
                 ],
@@ -189,8 +188,7 @@ def _impl(ctx):
                             "-no-canonical-prefixes",
                             "--target=aarch64-linux-gnu",
                             "--sysroot=%{SYSROOT_PATH}%/libc",
-                            # clang7 needs the following to find crt* stuffs.
-                            "--gcc-toolchain=%{SYSROOT_PATH}%/../",
+                            "--gcc-toolchain=%{GCC_TOOLCHAIN_PATH}%",
                         ],
                     ),
                 ],
@@ -249,7 +247,7 @@ def _impl(ctx):
 
     cxx_builtin_include_directories = [
         "%{SYSROOT_PATH}%/libc/usr/include",
-        "%{SYSROOT_PATH}%/include/c++/%{SYSROOT_CPP_VERSION}%",
+        "%{SYSROOT_PATH}%/include/c++/%{SYSROOT_VERSION}%",
         "%{COMPILER_PATH}%/include/c++/v1",
         "%{COMPILER_PATH}%/lib/clang/%{COMPILER_VERSION}%/include",
     ]

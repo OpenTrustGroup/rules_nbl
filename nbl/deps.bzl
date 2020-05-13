@@ -27,8 +27,10 @@ load(
     "@io_bazel_rules_nbl//nbl/private:sdk.bzl",
     _nbl_register_sdk = "nbl_register_sdk",
     _nbl_register_toolchain = "nbl_register_toolchain",
+    _nbl_wrap_toolchain = "nbl_wrap_toolchain",
 )
 
 nbl_rules_dependencies = _nbl_rules_dependencies
 nbl_register_sdk = _nbl_register_sdk
 nbl_register_toolchain = _nbl_register_toolchain
+nbl_wrap_toolchain = _nbl_wrap_toolchain

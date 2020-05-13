@@ -99,8 +99,27 @@ def _detect_compiler_type(ctx, compiler_path, compiler_target):
 
     fail("Could not detect compiler type")
 
+# HACK: For C++ header files, GCC access the real paths of file system
+# instead of symlinks inside sandbox, so real paths are needed for
+# cxx_builtin_include_directories in cc_config_*.bzl.tpl. To locate the
+# GCC path, a manifest in toolchain root was used.
+def _detect_gcc_realpath(ctx, compiler_path):
+    res = ctx.execute(["find", "{}".format(compiler_path), "-name", "*manifest.txt"])
+    if res.return_code != 0:
+        fail("Could not find manifest.txt in GCC")
+
+    res = ctx.execute(["realpath", "{}".format(res.stdout.strip())])
+    if res.return_code != 0:
+        fail("Could not locate realpath of manifest.txt")
+
+    res = ctx.execute(["dirname", res.stdout.strip()])
+    if res.return_code != 0:
+        fail("Could not detect directory of GCC")
+
+    return res.stdout.strip()
+
 # NOTE: Supports Linaro/ARM toolchain sysroot only.
-def _detect_sysroot_cpp_version(ctx, sysroot_path):
+def _detect_sysroot_version(ctx, sysroot_path):
     res = ctx.execute(["ls", "{}/include/c++".format(sysroot_path)])
     if res.return_code == 0:
         if len(res.stdout.strip().split(".")) == 3:
@@ -111,11 +130,19 @@ def _detect_sysroot_cpp_version(ctx, sysroot_path):
 def _cc_build_file(ctx, compiler_target, compiler_path, sysroot_path):
     compiler_type = _detect_compiler_type(ctx, compiler_path, compiler_target)
     compiler_version = _detect_compiler_version(ctx, compiler_path, compiler_target)
-    sysroot_cpp_version = _detect_sysroot_cpp_version(ctx, sysroot_path)
 
-    print(compiler_type)
-    print(compiler_version)
-    print(sysroot_cpp_version)
+    gcc_toolchain_path = ""
+    if compiler_type == "clang" and compiler_version == "7.0.0":
+        gcc_toolchain_path = sysroot_path
+        sysroot_path = "{}/{}".format(gcc_toolchain_path, compiler_target)
+
+    if compiler_type == "gcc":
+        compiler_path = _detect_gcc_realpath(ctx, compiler_path)
+        sysroot_path = "{}/{}".format(compiler_path, compiler_target)
+
+    sysroot_version = ""
+    if compiler_type != "clang" or compiler_version != "10.0.0":
+        sysroot_version = _detect_sysroot_version(ctx, sysroot_path)
 
     ctx.template(
         "BUILD.bazel",
@@ -131,8 +158,9 @@ def _cc_build_file(ctx, compiler_target, compiler_path, sysroot_path):
             "%{COMPILER_TARGET}%": compiler_target,
             "%{COMPILER_PATH}%": str(ctx.path(compiler_path)),
             "%{COMPILER_VERSION}%": compiler_version,
+            "%{GCC_TOOLCHAIN_PATH}%": gcc_toolchain_path,
             "%{SYSROOT_PATH}%": str(ctx.path(sysroot_path)),
-            "%{SYSROOT_CPP_VERSION}%": sysroot_cpp_version,
+            "%{SYSROOT_VERSION}%": sysroot_version,
         },
     )
 
@@ -185,13 +213,9 @@ def nbl_register_sdk(name = "nbl_sdk", version = None, path = None):
     else:
         _nbl_download_sdk(name = name, version = version)
 
-    print("nbl_register_sdk %s" % path)
     compiler_target = "aarch64-fuchsia"
     compiler_path = "../{}/toolchains/clang".format(name)
     sysroot_path = "../{}/hee".format(name)
-
-    #compiler_path = "@{}//:compiler_path"
-    #sysroot_path = "@{}//:sysroot_path"
     nbl_register_toolchain(compiler_target + "_cc", compiler_target, compiler_path, sysroot_path)
 
     # TODO: support compiler "aarch64-linux-gnu" registration for sdk
@@ -243,13 +267,13 @@ nbl_sdk = rule(
     provides = [NebulaSdkInfo],
 )
 
-def nbl_register_toolchain(name, target, compiler_path, sysroot_path):
+def nbl_register_toolchain(name, target, compiler, sysroot):
     # TODO:  prevent > 1 toolchain registered for same target
-    _nbl_cc_toolchain(name = name, target = target, compiler = compiler_path, sysroot = sysroot_path)
+    _nbl_cc_toolchain(name = name, target = target, compiler = compiler, sysroot = sysroot)
     native.register_toolchains("@{}//:{}".format(name, target))
 
 def _nbl_cc_toolchain_impl(ctx):
-    for entry in ["bin", "include", "lib", "libexec", "share"]:
+    for entry in ["bin", "include", "lib", "share"]:
         ctx.symlink(ctx.attr.compiler + "/" + entry, entry)
     _cc_build_file(ctx, ctx.attr.target, ctx.attr.compiler, ctx.attr.sysroot)
 
@@ -258,6 +282,33 @@ _nbl_cc_toolchain = repository_rule(
     attrs = {
         "target": attr.string(mandatory = True),
         "compiler": attr.string(mandatory = True),
-        "sysroot": attr.string(mandatory = True),
+        "sysroot": attr.string(
+            mandatory = True,
+            doc = "For clang7, sysroot must be GCC toolchain path for --gcc-toolchain.",
+        ),
+    },
+)
+
+def nbl_wrap_toolchain(name, target, compiler, sysroot):
+    # TODO:  prevent > 1 toolchain registered for same target
+    _nbl_wrap_toolchain(name = name, target = target, compiler = compiler, sysroot = sysroot)
+    native.register_toolchains("@{}//:{}".format(name, target))
+
+def _nbl_wrap_toolchain_impl(ctx):
+    compiler_path = str(ctx.path(ctx.attr.compiler).dirname)
+    for entry in ["bin", "include", "lib", "share"]:
+        ctx.symlink(compiler_path + "/" + entry, entry)
+    sysroot_path = str(ctx.path(ctx.attr.sysroot).dirname)
+    _cc_build_file(ctx, ctx.attr.target, compiler_path, sysroot_path)
+
+_nbl_wrap_toolchain = repository_rule(
+    _nbl_wrap_toolchain_impl,
+    attrs = {
+        "target": attr.string(mandatory = True),
+        "compiler": attr.label(mandatory = True),
+        "sysroot": attr.label(
+            mandatory = True,
+            doc = "For clang7, sysroot must be GCC toolchain label for --gcc-toolchain.",
+        ),
     },
 )

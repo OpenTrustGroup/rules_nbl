@@ -121,6 +121,27 @@ def _impl(ctx):
                     ACTION_NAMES.lto_backend,
                     ACTION_NAMES.clif_match,
                 ],
+                flag_groups = [
+                    flag_group(
+                        flags = [
+                            "--sysroot=%{SYSROOT_PATH}%/libc",
+                        ],
+                    ),
+                ],
+            ),
+            flag_set(
+                actions = [
+                    ACTION_NAMES.assemble,
+                    ACTION_NAMES.preprocess_assemble,
+                    ACTION_NAMES.linkstamp_compile,
+                    ACTION_NAMES.c_compile,
+                    ACTION_NAMES.cpp_compile,
+                    ACTION_NAMES.cpp_header_parsing,
+                    ACTION_NAMES.cpp_module_compile,
+                    ACTION_NAMES.cpp_module_codegen,
+                    ACTION_NAMES.lto_backend,
+                    ACTION_NAMES.clif_match,
+                ],
                 flag_groups = [flag_group(flags = ["-g"])],
                 with_features = [with_feature_set(features = ["dbg"])],
             ),
@@ -163,6 +184,7 @@ def _impl(ctx):
                     flag_group(
                         flags = [
                             "-no-canonical-prefixes",
+                            "--sysroot=%{SYSROOT_PATH}%/libc",
                         ],
                     ),
                 ],
@@ -221,9 +243,10 @@ def _impl(ctx):
 
     cxx_builtin_include_directories = [
         "%{SYSROOT_PATH}%/libc/usr/include",
-        "%{SYSROOT_PATH}%/include/c++/%{SYSROOT_CPP_VERSION}%",
+        "%{SYSROOT_PATH}%/include/c++/%{SYSROOT_VERSION}%",
         "%{COMPILER_PATH}%/include/c++/v1",
         "%{COMPILER_PATH}%/lib/gcc/%{COMPILER_TARGET}%/%{COMPILER_VERSION}%/include",
+        "%{COMPILER_PATH}%/lib/gcc/%{COMPILER_TARGET}%/%{COMPILER_VERSION}%/include-fixed",
     ]
 
     tool_paths = [
@@ -282,7 +305,7 @@ def _impl(ctx):
             target_system_name = "aarch64-linux-gnu",
             target_cpu = "arm64",
             target_libc = "unknown",
-            compiler = "compiler",
+            compiler = "gcc",
             abi_version = "unknown",
             abi_libc_version = "unknown",
             tool_paths = tool_paths,

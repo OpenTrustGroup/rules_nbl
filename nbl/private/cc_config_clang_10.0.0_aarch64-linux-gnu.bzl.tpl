@@ -245,7 +245,6 @@ def _impl(ctx):
 
     cxx_builtin_include_directories = [
         "%{SYSROOT_PATH}%/libc/usr/include",
-        "%{SYSROOT_PATH}%/include/c++/%{SYSROOT_CPP_VERSION}%",
         "%{COMPILER_PATH}%/include/c++/v1",
         "%{COMPILER_PATH}%/lib/clang/%{COMPILER_VERSION}%/include",
     ]
