@@ -30,24 +30,17 @@ load(
 def _remote_sdk(ctx, urls, strip_prefix, sha256):
     if len(urls) == 0:
         fail("no urls specified")
-    if urls[0].endswith(".tar.gz") or urls[0].endswith(".tar.xz"):
-        if strip_prefix != "":
-            fail("strip_prefix not supported")
-        ctx.download(
-            url = urls,
-            sha256 = sha256,
-            output = "_sdk.tmp",
-        )
-        res = ctx.execute(["tar", "-xf", "_sdk.tmp", "--strip-components=1"])
-        if res.return_code:
-            fail("error extracting SDK:\n" + res.stdout + res.stderr)
-        ctx.execute(["rm", "_sdk.tmp"])
-    else:
-        ctx.download_and_extract(
-            url = urls,
-            stripPrefix = strip_prefix,
-            sha256 = sha256,
-        )
+    if strip_prefix != "":
+        fail("strip_prefix not supported")
+    ctx.download(
+        url = urls,
+        sha256 = sha256,
+        output = "_sdk.tmp",
+    )
+    res = ctx.execute(["tar", "-xf", "_sdk.tmp", "--strip-components=1"])
+    if res.return_code:
+        fail("error extracting SDK:\n" + res.stdout + res.stderr)
+    ctx.execute(["rm", "_sdk.tmp"])
 
 def _nbl_download_sdk_impl(ctx):
     if ctx.attr.version:
@@ -64,38 +57,36 @@ def _nbl_download_sdk_impl(ctx):
 _nbl_download_sdk = repository_rule(
     _nbl_download_sdk_impl,
     attrs = {
-        "sdks": attr.string_list_dict(),
         "urls": attr.string_list(default = ["http://gle43/components/{}"]),
         "version": attr.string(),
         "strip_prefix": attr.string(default = ""),
     },
 )
 
-def _detect_compiler_version(ctx, compiler_path, compiler_target):
-    #$CLANG_ROOT/lib/clang/10.0.0
-    res = ctx.execute(["ls", "{}/lib/clang/".format(compiler_path)])
-    if res.return_code == 0:
-        if len(res.stdout.strip().split(".")) == 3:
-            return res.stdout.strip()
-        fail("Clang version not found")
+def _detect_compiler_version(ctx, cc_path):
+    res = ctx.execute(["ls", "{}/lib/clang/".format(cc_path)])
+    if res.return_code == 0 and len(res.stdout.strip().split(".")) == 3:
+        return res.stdout.strip()
 
-    #$GCC_ROOT/lib/gcc/aarch64-linux-gnu/6.2.1
-    res = ctx.execute(["ls", "{}/lib/gcc/{}/".format(compiler_path, compiler_target)])
+    res = ctx.execute(["ls", "{}/lib/gcc/{}".format(cc_path)])
     if res.return_code == 0:
-        if len(res.stdout.strip().split(".")) == 3:
+        cc_target = res.stdout.strip()
+        res = ctx.execute(["ls", "{}/lib/gcc/{}/".format(cc_path, cc_target)])
+        if res.return_code == 0 and len(res.stdout.strip().split(".")) == 3:
             return res.stdout.strip()
-        fail("Gcc version not found")
 
     fail("Could not detect compiler version")
 
-def _detect_compiler_type(ctx, compiler_path, compiler_target):
-    res = ctx.execute(["ls", "{}/bin/{}-gcc".format(compiler_path, compiler_target)])
-    if res.return_code == 0:
-        return "gcc"
+def _detect_compiler_type(ctx, compiler_path):
+    res = ctx.execute(["ls", "{}/bin/".format(compiler_path)])
+    if res.return_code != 0:
+        fail("Could not search compiler bin/")
 
-    res = ctx.execute(["ls", "{}/bin/clang".format(compiler_path)])
-    if res.return_code == 0:
+    if res.stdout.find("clang") != -1:
         return "clang"
+
+    if res.stdout.find("gcc") != -1:
+        return "gcc"
 
     fail("Could not detect compiler type")
 
@@ -124,45 +115,47 @@ def _detect_sysroot_version(ctx, sysroot_path):
     if res.return_code == 0:
         if len(res.stdout.strip().split(".")) == 3:
             return res.stdout.strip()
-        fail("Sysroot C++ version not found")
-    fail("Could not detect sysroot c++ version")
+    return ""
 
-def _cc_build_file(ctx, compiler_target, compiler_path, sysroot_path):
-    compiler_type = _detect_compiler_type(ctx, compiler_path, compiler_target)
-    compiler_version = _detect_compiler_version(ctx, compiler_path, compiler_target)
+def _assert_eq(a, b):
+    if a != b:
+        fail("{} != {}".format(a, b))
 
-    gcc_toolchain_path = ""
-    if compiler_type == "clang" and compiler_version == "7.0.0":
-        gcc_toolchain_path = sysroot_path
-        sysroot_path = "{}/{}".format(gcc_toolchain_path, compiler_target)
+def _gen_cc_config(ctx, cc_target, cc_path, gcc_path, sysroot_path):
+    cc_type = _detect_compiler_type(ctx, cc_path)
+    cc_version = _detect_compiler_version(ctx, cc_path)
+    sysroot_version = _detect_sysroot_version(ctx, sysroot_path)
 
-    if compiler_type == "gcc":
-        compiler_path = _detect_gcc_realpath(ctx, compiler_path)
-        sysroot_path = "{}/{}".format(compiler_path, compiler_target)
-
-    sysroot_version = ""
-    if compiler_type != "clang" or compiler_version != "10.0.0":
-        sysroot_version = _detect_sysroot_version(ctx, sysroot_path)
+    # HACK: see _nbl_wrap_toolchain docs for detail.
+    if gcc_path == "":
+        _assert_eq(cc_target, "aarch64-linux-gnu")
+        _assert_eq(cc_type, "clang")
+        _assert_eq(cc_version, "7.0.0")
+        gcc_path = sysroot_path
+        sysroot_path = "{}/{}".format(gcc_path, cc_target)
 
     ctx.template(
-        "BUILD.bazel",
-        Label("@io_bazel_rules_nbl//nbl/private:BUILD.compiler.bazel"),
+        "cc_config-{}.bzl".format(cc_target),
+        Label("@io_bazel_rules_nbl//nbl/private:cc_config_{}_{}_{}.bzl.tpl".format(cc_type, cc_version, cc_target)),
         substitutions = {
-            "%{COMPILER_TARGET}%": compiler_target,
-        },
-    )
-    ctx.template(
-        "cc_toolchain_config.bzl",
-        Label("@io_bazel_rules_nbl//nbl/private:cc_config_{}_{}_{}.bzl.tpl".format(compiler_type, compiler_version, compiler_target)),
-        substitutions = {
-            "%{COMPILER_TARGET}%": compiler_target,
-            "%{COMPILER_PATH}%": str(ctx.path(compiler_path)),
-            "%{COMPILER_VERSION}%": compiler_version,
-            "%{GCC_TOOLCHAIN_PATH}%": gcc_toolchain_path,
+            "%{COMPILER_TARGET}%": cc_target,
+            "%{COMPILER_PATH}%": str(ctx.path(cc_path)),
+            "%{COMPILER_VERSION}%": cc_version,
+            "%{GCC_TOOLCHAIN_PATH}%": str(ctx.path(gcc_path)),
             "%{SYSROOT_PATH}%": str(ctx.path(sysroot_path)),
             "%{SYSROOT_VERSION}%": sysroot_version,
         },
     )
+
+def _wrap_build_file(ctx, cc_target, cc_path, sysroot_path):
+    ctx.template(
+        "BUILD.bazel",
+        Label("@io_bazel_rules_nbl//nbl/private:BUILD.compiler.bazel"),
+        substitutions = {
+            "%{COMPILER_TARGET}%": cc_target,
+        },
+    )
+    _gen_cc_config(ctx, cc_target, cc_path, "", sysroot_path)
 
 def _sdk_build_file(ctx):
     ctx.file("ROOT")
@@ -174,6 +167,26 @@ def _sdk_build_file(ctx):
             "%{SDK_NAME}%": ctx.name,
             "%{SDK_PATH}%": str(ctx.path(".")),
         },
+    )
+
+    _gen_cc_config(
+        ctx,
+        "aarch64-fuchsia",
+        "toolchains/clang",
+        "toolchains/linaro-gcc",
+        "hee",
+    )
+    _gen_cc_config(
+        ctx,
+        "aarch64-linux-gnu",
+        "toolchains/clang",
+        "toolchains/linaro-gcc",
+        "toolchains/linaro-gcc/aarch64-linux-gnu",
+    )
+
+    ctx.template(
+        "hee/BUILD.bazel",
+        Label("@io_bazel_rules_nbl//nbl/private:nbl_lib.bzl.tpl"),
     )
 
 def _nbl_lib_impl(ctx):
@@ -195,11 +208,11 @@ def nbl_register_sdk(name = "nbl_sdk", version = None, path = None):
 
     Args:
       name: The sdk name, used as label to referenced in other rules.
-      version: The sdk version. ex. 1.0.17.1
+      version: The sdk version. ex. 1.0.17.1, default: latest
       path: The absolute path to local sdk.
     """
 
-    sdk_kinds = ("_nbl_download_sdk", "_nbl_local_sdk", "_nbl_local_cc")
+    sdk_kinds = ("_nbl_download_sdk", "_nbl_local_sdk")
     existing_rules = native.existing_rules()
     sdk_rules = [r for r in existing_rules.values() if r["kind"] in sdk_kinds]
     if len(sdk_rules) > 0:
@@ -213,14 +226,8 @@ def nbl_register_sdk(name = "nbl_sdk", version = None, path = None):
     else:
         _nbl_download_sdk(name = name, version = version)
 
-    compiler_target = "aarch64-fuchsia"
-    compiler_path = "../{}/toolchains/clang".format(name)
-    sysroot_path = "../{}/hee".format(name)
-    nbl_register_toolchain(compiler_target + "_cc", compiler_target, compiler_path, sysroot_path)
-
-    # TODO: support compiler "aarch64-linux-gnu" registration for sdk
-
-    _nbl_lib(name = name + "_lib", sdk = name)
+    native.register_toolchains("@{}//:{}".format(name, "aarch64-fuchsia"))
+    native.register_toolchains("@{}//:{}".format(name, "aarch64-linux-gnu"))
     native.register_toolchains("@{}//:nbl_toolchain_dummy".format(name))
 
 def _nbl_local_sdk_impl(ctx):
@@ -267,28 +274,6 @@ nbl_sdk = rule(
     provides = [NebulaSdkInfo],
 )
 
-def nbl_register_toolchain(name, target, compiler, sysroot):
-    # TODO:  prevent > 1 toolchain registered for same target
-    _nbl_cc_toolchain(name = name, target = target, compiler = compiler, sysroot = sysroot)
-    native.register_toolchains("@{}//:{}".format(name, target))
-
-def _nbl_cc_toolchain_impl(ctx):
-    for entry in ["bin", "include", "lib", "share"]:
-        ctx.symlink(ctx.attr.compiler + "/" + entry, entry)
-    _cc_build_file(ctx, ctx.attr.target, ctx.attr.compiler, ctx.attr.sysroot)
-
-_nbl_cc_toolchain = repository_rule(
-    _nbl_cc_toolchain_impl,
-    attrs = {
-        "target": attr.string(mandatory = True),
-        "compiler": attr.string(mandatory = True),
-        "sysroot": attr.string(
-            mandatory = True,
-            doc = "For clang7, sysroot must be GCC toolchain path for --gcc-toolchain.",
-        ),
-    },
-)
-
 def nbl_wrap_toolchain(name, target, compiler, sysroot):
     # TODO:  prevent > 1 toolchain registered for same target
     _nbl_wrap_toolchain(name = name, target = target, compiler = compiler, sysroot = sysroot)
@@ -299,7 +284,7 @@ def _nbl_wrap_toolchain_impl(ctx):
     for entry in ["bin", "include", "lib", "share"]:
         ctx.symlink(compiler_path + "/" + entry, entry)
     sysroot_path = str(ctx.path(ctx.attr.sysroot).dirname)
-    _cc_build_file(ctx, ctx.attr.target, compiler_path, sysroot_path)
+    _wrap_build_file(ctx, ctx.attr.target, compiler_path, sysroot_path)
 
 _nbl_wrap_toolchain = repository_rule(
     _nbl_wrap_toolchain_impl,

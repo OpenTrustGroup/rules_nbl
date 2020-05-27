@@ -14,7 +14,7 @@
 
 """Sdk files and sha256"""
 
-DEFAULT_VERSION = "x.x.x"
+DEFAULT_VERSION = "latest"
 
 MIN_SUPPORTED_VERSION = "0.00"
 

@@ -19,6 +19,12 @@ load(
     "PackageInfo",
     "ScriptInfo",
 )
+load(
+    "@io_bazel_rules_nbl//nbl/private:script_templates.bzl",
+    "HOST_SCRIPTS",
+    "REE_SCRIPTS",
+    "TEE_SCRIPTS",
+)
 
 def _otrp_keystore_impl(ctx):
     toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
@@ -47,11 +53,8 @@ def _otrp_keystore_impl(ctx):
 _otrp_keystore = rule(
     implementation = _otrp_keystore_impl,
     attrs = {
-        "srcs": attr.label(
-            allow_single_file = True,
-            mandatory = True,
-        ),
-        "sd_privilege": attr.label(allow_single_file = True, mandatory = True),
+        "srcs": attr.label(allow_single_file = True),
+        "sd_privilege": attr.label(allow_single_file = True),
         "out": attr.output(),
     },
     toolchains = ["@io_bazel_rules_nbl//nbl:toolchain"],
@@ -62,41 +65,7 @@ def _uuid_impl(ctx):
     if PackageInfo in ctx.attr.srcs:
         exec = ctx.attr.srcs[PackageInfo].exec
     script = ctx.actions.declare_file(ctx.label.name + ".sh")
-    script_content = """
-#!/bin/bash
-set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
-
-grok_offset() {{
-  local line
-  while read line; do
-    case "$line" in
-    # Section Headers for .note.nebula.app.manifest
-    #   [ 2] .note.nebula.app.manifest NOTE            00000000000002b8 0002b8 0000a8 00   A  0   0  4
-    *.note.nebula.app.manifest*NOTE*)
-      local words=($line)
-      local off=$(printf '%#u' 0x${{words[4]}})
-      echo $off
-      return 0
-      ;;
-    esac
-  done
-  return 1
-}}
-
-# See |nbl_app_manifest.h| for details
-off=$(($(readelf -W -S {exec} | grok_offset) + 0x18))
-
-# Read 16 bytes (32 chars) into a string
-v=$(hexdump -s ${{off}} -n 16 -e '/1 "%02x"' {exec})
-
-# Fill each field from array values and arrange by endian
-time_low=$(printf %s "${{v:6:2}}${{v:4:2}}${{v:2:2}}${{v:0:2}}")
-time_mid=$(printf %s "${{v:10:2}}${{v:8:2}}")
-time_high_version=$(printf %s "${{v:14:2}}${{v:12:2}}")
-clock_seq=$(printf %s "${{v:16:4}}")
-node=$(printf %s "${{v:20}}")
-echo "${{time_low}}-${{time_mid}}-${{time_high_version}}-${{clock_seq}}-${{node}}"
-""".format(exec = exec.short_path)
+    script_content = HOST_SCRIPTS["read_uuid"].format(exec = exec.short_path)
     ctx.actions.write(script, script_content, is_executable = True)
 
     return [DefaultInfo(
@@ -118,31 +87,6 @@ _uuid = rule(
     executable = True,
 )
 
-_template_provision = """
-#!/bin/bash
-set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
-
-{sh_exec} {sh_opts} {sh_host} rm -rf /data/nebula_ta
-{sh_exec} {sh_opts} {sh_host} mkdir -p /data/
-{cp_exec} {cp_opts} {keystore}/key_store_test {cp_host}/data/nebula_ta
-{cp_exec} {cp_opts} {nblruncmd} {cp_host}/data/nblruncmd
-{sh_exec} {sh_opts} {sh_host} chmod 755 /data/nblruncmd
-echo -n "Provisioning..."
-{sh_exec} {sh_opts} {sh_host} nbl_daemon -p /data/nebula_ta
-echo "Done"
-"""
-
-_template_launch = """
-#!/bin/bash
-set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
-
-UUID="$({uuid})"
-echo -n "Launching..."
-{sh_exec} {sh_opts} {sh_host} /data/nblruncmd killall ${{UUID}} || echo
-{sh_exec} {sh_opts} {sh_host} nbl_daemon -l ${{UUID}}
-echo "Done"
-"""
-
 def _register_otrp_cmd_impl(ctx):
     params = ctx.attr.params[ScriptInfo]
 
@@ -151,7 +95,7 @@ def _register_otrp_cmd_impl(ctx):
         exec = ctx.attr.srcs[PackageInfo].exec
 
     script = ctx.actions.declare_file(ctx.label.name + ".sh")
-    script_content = ctx.attr.template.format(
+    script_content = ctx.attr.template[0].format(
         **params.substitutions
     )
     ctx.actions.write(script, script_content, is_executable = True)
@@ -167,7 +111,7 @@ _register_otrp_cmd = rule(
     attrs = {
         "srcs": attr.label(allow_single_file = True, mandatory = True),
         "params": attr.label(mandatory = True, providers = [ScriptInfo]),
-        "template": attr.string(mandatory = True),
+        "template": attr.string_list(mandatory = True),
     },
     executable = True,
 )
@@ -177,10 +121,15 @@ def _otrp_params_impl(ctx):
     sdk = toolchain.sdk
     selected_device = ctx.attr.device[0]
 
-    runfiles = [ctx.file.keystore, ctx.file.uuid, sdk.target.nblruncmd]
+    # TODO: Remove nblruncmd deps in non-nebula build
+    runfiles = [ctx.file.srcs, sdk.target.nblruncmd]
+    runfiles += ctx.files.uuid if ctx.files.uuid else []
+    runfiles += ctx.files.keystore if ctx.files.keystore else []
     substitutions = {
-        "uuid": ctx.file.uuid.short_path,
-        "keystore": ctx.file.keystore.short_path,
+        "exec_path": ctx.file.srcs.short_path,
+        "exec_name": ctx.file.srcs.basename,
+        "uuid": ctx.files.uuid[0].short_path if ctx.files.uuid else "",
+        "keystore": ctx.files.keystore[0].short_path if ctx.files.keystore else "",
         "nblruncmd": sdk.target.nblruncmd.short_path,
     }
     if selected_device == "android":
@@ -209,9 +158,10 @@ def _otrp_params_impl(ctx):
 _otrp_params = rule(
     implementation = _otrp_params_impl,
     attrs = {
-        "device": attr.string_list(mandatory = True),
-        "keystore": attr.label(allow_single_file = True, mandatory = True),
-        "uuid": attr.label(allow_single_file = True, mandatory = True),
+        "device": attr.string_list(),
+        "keystore": attr.label_list(allow_files = True),
+        "uuid": attr.label_list(allow_files = True),
+        "srcs": attr.label(allow_single_file = True, mandatory = True),
     },
     provides = [ScriptInfo],
     toolchains = ["@io_bazel_rules_nbl//nbl:toolchain"],
@@ -238,25 +188,38 @@ def nbl_register_pkgcmds(srcs):
 
     # generate providers for different configs
     _otrp_params(
-        name = "otrp_params",
+        name = "_otrp_params",
         device = select({
             "@io_bazel_rules_nbl//nbl:cfg_android": ["android"],
             "//conditions:default": ["qemu"],
         }),
-        keystore = ":otrp_keystore",
-        uuid = ":uuid",
+        keystore = select({
+            "@io_bazel_rules_nbl//platforms:fuchsia": [":otrp_keystore"],
+            "@io_bazel_rules_nbl//platforms:linux": [],
+        }),
+        uuid = select({
+            "@io_bazel_rules_nbl//platforms:fuchsia": [":uuid"],
+            "@io_bazel_rules_nbl//platforms:linux": [],
+        }),
+        srcs = srcs,
     )
 
     _register_otrp_cmd(
         name = "provision",
         srcs = srcs,
-        params = ":otrp_params",
-        template = _template_provision,
+        params = ":_otrp_params",
+        template = select({
+            "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["provision"]],
+            "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["provision"]],
+        }),
     )
 
     _register_otrp_cmd(
         name = "launch",
         srcs = srcs,
-        params = ":otrp_params",
-        template = _template_launch,
+        params = ":_otrp_params",
+        template = select({
+            "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["launch"]],
+            "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["launch"]],
+        }),
     )

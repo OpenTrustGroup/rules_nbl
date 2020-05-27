@@ -1,70 +1,70 @@
 
 cc_library(
     name = "zlib",
-    srcs = [ "hee/zlib/lib/libz.so" ],
+    srcs = [ "zlib/lib/libz.so" ],
     hdrs = glob([
-        "hee/zlib/include/*.h"
+        "zlib/include/*.h"
     ]),
-    strip_include_prefix = "hee/zlib/include",
+    strip_include_prefix = "zlib/include",
     visibility = [ "//visibility:public" ]
 )
 
 cc_library(
     name = "camproxy",
-    srcs = [ "hee/camproxy/lib/libcamproxy.a" ],
+    srcs = [ "camproxy/lib/libcamproxy.a" ],
     hdrs = [
-        "hee/camproxy/include/camproxy/seccamlib.h",
+        "camproxy/include/camproxy/seccamlib.h",
     ],
-    strip_include_prefix = "hee/camproxy/include",
+    strip_include_prefix = "camproxy/include",
     visibility = [ "//visibility:public" ]
 )
 
 cc_library(
     name = "trusty",
-    srcs = [ "hee/trusty/lib/liblibc-trusty.a" ],
+    srcs = [ "trusty/lib/liblibc-trusty.a" ],
     hdrs = glob([
-        "hee/trusty/include/**/*.h",
+        "trusty/include/**/*.h",
     ]),
-    strip_include_prefix = "hee/trusty/include",
+    strip_include_prefix = "trusty/include",
     visibility = [ "//visibility:public" ]
 )
 
 cc_library(
     name = "mtee_api",
-    srcs = [ "hee/trusty/lib/libmtee_api.a" ],
+    srcs = [ "trusty/lib/libmtee_api.a" ],
     visibility = [ "//visibility:public" ]
 )
 
 cc_library(
     name = "nbl_fwk",
-    srcs = [ "hee/nbl_fwk_hee/lib/libnbl_fwk_hee.a" ],
+    srcs = [ "nbl_fwk_lib/libnbl_fwk_hee.a" ],
     hdrs = glob([
-        "hee/nbl_fwk_hee/include/**/*.h",
+        "nbl_fwk_include/**/*.h",
     ]),
-    strip_include_prefix = "hee/nbl_fwk_hee/include",
+    strip_include_prefix = "nbl_fwk_include",
     visibility = [ "//visibility:public" ]
 )
 
 cc_library(
     name = "nbl_trace_provider",
-    srcs = [ "hee/nbl_trace_provider/lib/libnbl_trace_provider.so" ],
+    srcs = [ "nbl_trace_provider/lib/libnbl_trace_provider.so" ],
     hdrs = glob([
-        "hee/nbl_trace_provider/include/**/*.h",
+        "nbl_trace_provider/include/**/*.h",
     ]),
-    strip_include_prefix = "hee/nbl_trace_provider/include",
+    strip_include_prefix = "nbl_trace_provider/include",
     visibility = [ "//visibility:public" ]
 )
 
 cc_library(
     name = "trace",
     srcs = [
-        "hee/lib/libtrace.a",
-        "hee/lib/libtrace-engine.a",
-        "hee/lib/libzx.a",
-        "hee/lib/libfbl.a",
+        "lib/libtrace.a",
+        "lib/libtrace-engine.a",
+        "lib/libzx.a",
+        "lib/libfbl.a",
     ],
     hdrs = glob([
-        "hee/include/trace/*.h",
+        "include/trace/*.h",
     ]),
     visibility = [ "//visibility:public" ]
 )
