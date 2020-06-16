@@ -23,7 +23,7 @@ SDK_REPOSITORIES = {
         "linux_amd64": ("NBL_SDK_Vx.x.x_20200429_00000000.tar.gz", "af936a98430bfd234ba78037e783f041a00f29d6311fcb1b629db0c0702fa7fd"),
     },
     "latest": {
-        "linux_amd64": ("NBL_SDK_V1.1.x_20200615_000000.tar.gz", "b5c92824edca0ad64f1ba0204ac4264500d64644de8142b5a04e5f12d30b7074"),
+        "linux_amd64": ("NBL_SDK_V1.1.x_20200615_000000.tar.gz", "e9fb9c4886ef3b65408452243e009675ac0c9c5a805fa095b7a001dc2b336e2b"),
     },
     "1.0.17.1": {
         "linux_amd64": ("NBL_SDK_V1.0.17.1_20200418_235526.tar.gz", "ed458cc49ddbbb9b4df878e8a2c9e4e2ca0ac84b4ce723e17cf5731a4d623f64"),
