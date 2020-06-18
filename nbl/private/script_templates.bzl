@@ -34,7 +34,7 @@ set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
 UUID="$({uuid})"
 echo "Launching..."
-{sh_exec} {sh_opts} {sh_host} /data/nblruncmd killall ${{UUID}} || echo
+{sh_exec} {sh_opts} {sh_host} /data/nblruncmd killall ${{UUID%-*}}* || echo
 {sh_exec} {sh_opts} {sh_host} nbl_daemon -l ${{UUID}}
 echo "Done"
 """

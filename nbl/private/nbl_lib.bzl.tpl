@@ -21,7 +21,10 @@ cc_library(
 
 cc_library(
     name = "trusty",
-    srcs = [ "trusty/lib/liblibc-trusty.a" ],
+    srcs = [
+      "trusty/lib/liblibc-trusty.a",
+      "trusty/lib/libstorage.a",
+    ],
     hdrs = glob([
         "trusty/include/**/*.h",
     ]),
@@ -37,11 +40,21 @@ cc_library(
 
 cc_library(
     name = "nbl_fwk",
-    srcs = [ "nbl_fwk_lib/libnbl_fwk_hee.a" ],
+    srcs = [ "nbl_fwk_hee/lib/libnbl_fwk_hee.a" ],
     hdrs = glob([
-        "nbl_fwk_include/**/*.h",
+        "nbl_fwk_hee/include/**/*.h",
     ]),
-    strip_include_prefix = "nbl_fwk_include",
+    strip_include_prefix = "nbl_fwk_hee/include",
+    visibility = [ "//visibility:public" ]
+)
+
+cc_library(
+    name = "nbl_attest",
+    srcs = [ "nbl_attest/lib/libnbl_attest.a" ],
+    hdrs = glob([
+        "nbl_attest/include/**/*.h",
+    ]),
+    strip_include_prefix = "nbl_attest/include",
     visibility = [ "//visibility:public" ]
 )
 
