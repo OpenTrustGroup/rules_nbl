@@ -32,10 +32,14 @@ _tee_launch_tpl = """
 #!/bin/bash
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
+if [[ "${{@}}" != "" ]]; then
+    ARGS="-a \'${{@}}\'"
+fi
+
 UUID="$({uuid})"
 echo "Launching..."
 {sh_exec} {sh_opts} {sh_host} /data/nblruncmd killall ${{UUID%-*}}* || echo
-{sh_exec} {sh_opts} {sh_host} nbl_daemon -l ${{UUID}}
+{sh_exec} {sh_opts} {sh_host} nbl_daemon -l ${{UUID}} ${{ARGS}}
 echo "Done"
 """
 
