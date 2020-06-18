@@ -167,47 +167,51 @@ _otrp_params = rule(
     toolchains = ["@io_bazel_rules_nbl//nbl:toolchain"],
 )
 
-def nbl_register_pkgcmds(srcs):
+def nbl_register_pkgcmds(srcs, name = "default"):
     """Register basic commands for cc_binary or pkg_far.
 
     Args:
       srcs: the cc_binary, or pkg_far to support basic
         commands: provision, launch ... etc.
+      name: modify the naming of basic comamnds. It will
+        become provision-xxx, launch-xxx, xxx is the name
+        you given. This is used to support registering
+        multiple pkgcmds
     """
 
     # generate otrp keystore
     _otrp_keystore(
-        name = "otrp_keystore",
-        out = "keystore",
+        name = "otrp_keystore-%s" % name,
+        out = "keystore-%s" % name,
         sd_privilege = "sd.privilege",
         srcs = srcs,
     )
 
     # generate uuid.sh
-    _uuid(name = "uuid", srcs = srcs)
+    _uuid(name = "uuid-%s" % name, srcs = srcs)
 
     # generate providers for different configs
     _otrp_params(
-        name = "_otrp_params",
+        name = "_otrp_params-%s" % name,
         device = select({
             "@io_bazel_rules_nbl//nbl:cfg_android": ["android"],
             "//conditions:default": ["qemu"],
         }),
         keystore = select({
-            "@io_bazel_rules_nbl//platforms:fuchsia": [":otrp_keystore"],
+            "@io_bazel_rules_nbl//platforms:fuchsia": [":otrp_keystore-%s" % name],
             "@io_bazel_rules_nbl//platforms:linux": [],
         }),
         uuid = select({
-            "@io_bazel_rules_nbl//platforms:fuchsia": [":uuid"],
+            "@io_bazel_rules_nbl//platforms:fuchsia": [":uuid-%s" % name],
             "@io_bazel_rules_nbl//platforms:linux": [],
         }),
         srcs = srcs,
     )
 
     _register_otrp_cmd(
-        name = "provision",
+        name = "provision" if name == "default" else ("provision-%s" % name),
         srcs = srcs,
-        params = ":_otrp_params",
+        params = ":_otrp_params-%s" % name,
         template = select({
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["provision"]],
             "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["provision"]],
@@ -215,9 +219,9 @@ def nbl_register_pkgcmds(srcs):
     )
 
     _register_otrp_cmd(
-        name = "launch",
+        name = "launch" if name == "default" else ("launch-%s" % name),
         srcs = srcs,
-        params = ":_otrp_params",
+        params = ":_otrp_params-%s" % name,
         template = select({
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["launch"]],
             "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["launch"]],
