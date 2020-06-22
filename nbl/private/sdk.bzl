@@ -257,6 +257,7 @@ def _nbl_sdk_impl(ctx):
         ),
         target = TargetInfo(
             nblruncmd = ctx.file.target_nblruncmd,
+            taloaderproxyd = ctx.file.target_taloaderproxyd,
         ),
     )]
 
@@ -270,6 +271,7 @@ nbl_sdk = rule(
         "host_create_archive_manifest": attr.label(allow_single_file = True, mandatory = True),
         "host_far": attr.label(allow_single_file = True, mandatory = True),
         "target_nblruncmd": attr.label(allow_single_file = True, mandatory = True),
+        "target_taloaderproxyd": attr.label(allow_single_file = True, mandatory = True),
     },
     provides = [NebulaSdkInfo],
 )

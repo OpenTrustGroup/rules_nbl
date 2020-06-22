@@ -42,6 +42,7 @@ TargetInfo = provider(
     doc = "Contains information about the target files in Nebula SDK.",
     fields = {
         "nblruncmd": "A target tool to run commands in the other world.",
+        "taloaderproxyd": "A daemon enables loading TA from REE filesystems.",
     },
 )
 

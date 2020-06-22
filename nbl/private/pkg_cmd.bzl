@@ -123,6 +123,7 @@ def _otrp_params_impl(ctx):
 
     # TODO: Remove nblruncmd deps in non-nebula build
     runfiles = [ctx.file.srcs, sdk.target.nblruncmd]
+    runfiles += [sdk.target.taloaderproxyd]
     runfiles += ctx.files.uuid if ctx.files.uuid else []
     runfiles += ctx.files.keystore if ctx.files.keystore else []
     substitutions = {
@@ -131,6 +132,7 @@ def _otrp_params_impl(ctx):
         "uuid": ctx.files.uuid[0].short_path if ctx.files.uuid else "",
         "keystore": ctx.files.keystore[0].short_path if ctx.files.keystore else "",
         "nblruncmd": sdk.target.nblruncmd.short_path,
+        "taloaderproxyd": sdk.target.taloaderproxyd.short_path,
     }
     if selected_device == "android":
         substitutions.update({
@@ -225,5 +227,25 @@ def nbl_register_pkgcmds(srcs, name = "default"):
         template = select({
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["launch"]],
             "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["launch"]],
+        }),
+    )
+
+    _register_otrp_cmd(
+        name = "trace" if name == "default" else ("trace-%s" % name),
+        srcs = srcs,
+        params = ":_otrp_params-%s" % name,
+        template = select({
+            "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["trace"]],
+            "@io_bazel_rules_nbl//platforms:linux": [],
+        }),
+    )
+
+    _register_otrp_cmd(
+        name = "dumptrace" if name == "default" else ("dumptrace-%s" % name),
+        srcs = srcs,
+        params = ":_otrp_params-%s" % name,
+        template = select({
+            "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["dumptrace"]],
+            "@io_bazel_rules_nbl//platforms:linux": [],
         }),
     )

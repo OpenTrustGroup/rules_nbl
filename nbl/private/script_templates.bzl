@@ -43,6 +43,42 @@ echo "Launching..."
 echo "Done"
 """
 
+_tee_trace_tpl = """
+#!/bin/bash
+set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
+
+if [[ "${{@}}" != "" ]]; then
+    ARGS="-a \'${{@}}\'"
+fi
+
+RES=`{sh_exec} {sh_opts} {sh_host} ps -A | grep taloaderproxyd || echo`
+if [[ "${{RES}}" == "" ]]; then
+    echo "Launch taloaderproxyd"
+    {cp_exec} {cp_opts} {taloaderproxyd} {cp_host}/data/taloaderproxyd
+    {sh_exec} {sh_opts} {sh_host} {cp_host}/data/taloaderproxyd -d /dev/trusty-ipc-dev0&
+fi
+
+UUID="$({uuid})"
+{sh_exec} {sh_opts} {sh_host} /data/nblruncmd killall ${{UUID%-*}}* || echo
+
+echo "Start tracing..."
+{sh_exec} {sh_opts} {sh_host} rm -rf {cp_host}/data/${{UUID}}
+{cp_exec} {cp_opts} {exec_path} {cp_host}/data/${{UUID}}
+{sh_exec} {sh_opts} {sh_host} nbl_daemon  --enable-tracer --load-in-non-secure {cp_host}/data/${{UUID}} ${{ARGS}}
+echo "Done"
+"""
+
+_tee_dumptrace_tpl = """
+#!/bin/bash
+set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
+
+UUID="$({uuid})"
+{sh_exec} {sh_opts} {sh_host} /data/nblruncmd killall ${{UUID%-*}}* || echo
+
+echo "Stop tracing and dump trace file..."
+{sh_exec} {sh_opts} {sh_host} /data/nblruncmd cat /data/trace.json > trace.json
+"""
+
 _ree_provision_tpl = """
 #!/bin/bash
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
@@ -107,6 +143,8 @@ REE_SCRIPTS = {
 TEE_SCRIPTS = {
     "provision": _tee_provision_tpl,
     "launch": _tee_launch_tpl,
+    "trace": _tee_trace_tpl,
+    "dumptrace": _tee_dumptrace_tpl,
 }
 
 HOST_SCRIPTS = {
