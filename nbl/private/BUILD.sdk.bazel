@@ -85,7 +85,7 @@ filegroup(
     name = "taloaderproxyd",
     srcs = select({
         "@io_bazel_rules_nbl//nbl:cfg_android": ["android/bin/taloaderproxyd"],
-        "//conditions:default": [],
+        "//conditions:default": ["ree/bin/taloaderproxyd"],
     }),
 )
 
