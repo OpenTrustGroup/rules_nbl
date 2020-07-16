@@ -241,11 +241,11 @@ def nbl_register_pkgcmds(srcs, name = "default"):
     )
 
     _register_otrp_cmd(
-        name = "dumptrace" if name == "default" else ("dumptrace-%s" % name),
+        name = "attach" if name == "default" else ("attach-%s" % name),
         srcs = srcs,
         params = ":_otrp_params-%s" % name,
         template = select({
-            "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["dumptrace"]],
+            "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["attach"]],
             "@io_bazel_rules_nbl//platforms:linux": [],
         }),
     )

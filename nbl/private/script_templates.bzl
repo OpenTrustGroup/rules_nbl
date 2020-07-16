@@ -45,37 +45,45 @@ echo "Done"
 
 _tee_trace_tpl = """
 #!/bin/bash
+trap func "SIGINT"
+func() {{
+    PID=`{sh_exec} {sh_opts} {sh_host} ps -Ao pid,comm | grep nblruncmd | awk {{'print \$1'}} | head -n 1`
+    {sh_exec} {sh_opts} {sh_host} kill -SIGINT ${{PID}}
+}}
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
 if [[ "${{@}}" != "" ]]; then
     ARGS="-a \'${{@}}\'"
 fi
 
-RES=`{sh_exec} {sh_opts} {sh_host} ps -A | grep taloaderproxyd || echo`
-if [[ "${{RES}}" == "" ]]; then
-    echo "Launch taloaderproxyd"
-    {cp_exec} {cp_opts} {taloaderproxyd} {cp_host}/data/taloaderproxyd
-    {sh_exec} {sh_opts} {sh_host} {cp_host}/data/taloaderproxyd -d /dev/trusty-ipc-dev0&
-fi
-
 UUID="$({uuid})"
 {sh_exec} {sh_opts} {sh_host} /data/nblruncmd killall ${{UUID%-*}}* || echo
 
-echo "Start tracing..."
-{sh_exec} {sh_opts} {sh_host} rm -rf {cp_host}/data/${{UUID}}
-{cp_exec} {cp_opts} {exec_path} {cp_host}/data/${{UUID}}
-{sh_exec} {sh_opts} {sh_host} nbl_daemon  --enable-tracer --load-in-non-secure {cp_host}/data/${{UUID}} ${{ARGS}}
-echo "Done"
+{sh_exec} {sh_opts} {sh_host} /data/nblruncmd trace record  --uuid=${{UUID}} ${{ARGS}} &
+PID=$!
+wait ${{PID}} || echo
+{sh_exec} {sh_opts} {sh_host} /data/nblruncmd cat /data/trace.json > trace.json
 """
 
-_tee_dumptrace_tpl = """
+_tee_attach_tpl = """
 #!/bin/bash
+trap func "SIGINT"
+func() {{
+    PID=`{sh_exec} {sh_opts} {sh_host} ps -Ao pid,comm | grep nblruncmd | awk {{'print \$1'}} | head -n 1`
+    {sh_exec} {sh_opts} {sh_host} kill -SIGINT ${{PID}}
+}}
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
 UUID="$({uuid})"
-{sh_exec} {sh_opts} {sh_host} /data/nblruncmd killall ${{UUID%-*}}* || echo
+PID=`{sh_exec} {sh_opts} {sh_host} /data/nblruncmd ps | grep ${{UUID%-*}} | grep -oE "p:([0-9]+)" | sed s/p:// || echo`
+if [[ "${{PID}}" == "" ]]; then
+    echo "You should launch the process first"
+    exit 0
+fi
 
-echo "Stop tracing and dump trace file..."
+{sh_exec} {sh_opts} {sh_host} /data/nblruncmd trace record  --attach=${{PID}} &
+PID=$!
+wait ${{PID}} || echo
 {sh_exec} {sh_opts} {sh_host} /data/nblruncmd cat /data/trace.json > trace.json
 """
 
@@ -144,7 +152,7 @@ TEE_SCRIPTS = {
     "provision": _tee_provision_tpl,
     "launch": _tee_launch_tpl,
     "trace": _tee_trace_tpl,
-    "dumptrace": _tee_dumptrace_tpl,
+    "attach": _tee_attach_tpl,
 }
 
 HOST_SCRIPTS = {

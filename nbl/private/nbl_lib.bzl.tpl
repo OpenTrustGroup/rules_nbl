@@ -78,6 +78,8 @@ cc_library(
     ],
     hdrs = glob([
         "include/trace/*.h",
+        "include/lib/zx/*.h",
+        "include/fbl/*.h"
     ]),
     visibility = [ "//visibility:public" ]
 )
