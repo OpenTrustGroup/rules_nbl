@@ -15,6 +15,11 @@
 """Package (FAR) helper and rules for use in projects BUILD files."""
 
 load(
+    "@io_bazel_rules_nbl//nbl/private:pkg_cmd.bzl",
+    nbl_register_pkgcmds = "nbl_register_pkgcmds",
+)
+
+load(
     "@io_bazel_rules_nbl//nbl/private:providers.bzl",
     "PackageInfo",
 )
@@ -65,6 +70,8 @@ _pkg_far = rule(
 )
 
 def pkg_far(**kwargs):
+    kwargs["name"] = kwargs["name"] if "name" in kwargs else "default"
     meta = kwargs.get("meta") or "meta/sandbox"
     rscs = kwargs.get("rscs") or "resources/manifest.json"
     _pkg_far(out = kwargs["name"] + ".far", meta = meta, rscs = rscs, **kwargs)
+    nbl_register_pkgcmds(":" + kwargs["name"], name = kwargs["name"])
