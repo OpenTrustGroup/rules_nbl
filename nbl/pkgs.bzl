@@ -24,4 +24,10 @@ load(
     _pkg_far = "pkg_far",
 )
 
+load(
+    "@io_bazel_rules_nbl//nbl/private:pkg_bin.bzl",
+    _pkg_bin = "pkg_bin",
+)
+
 pkg_far = _pkg_far
+pkg_bin = _pkg_bin
