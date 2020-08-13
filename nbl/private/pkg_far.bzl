@@ -46,7 +46,22 @@ def _pkg_far_impl(ctx):
         dst_path = "lib/" + f.basename
         data_files.append("%s=%s" % (dst_path, src_path))
 
-    archive_manifest = ctx.actions.declare_file("archive_manifest")
+    for f in ctx.files.services:
+        src_path = f.path
+        dst_path = "services/" + f.basename
+        data_files.append("%s=%s" % (dst_path, src_path))
+
+    for f in ctx.files.tests:
+        src_path = f.path
+        dst_path = "tests/" + f.basename
+        data_files.append("%s=%s" % (dst_path, src_path))
+
+    for f in ctx.files.resources:
+        src_path = f.path
+        dst_path = "resources/" + f.basename
+        data_files.append("%s=%s" % (dst_path, src_path))
+
+    archive_manifest = ctx.actions.declare_file("archive_manifest." + ctx.attr.name)
 
     # create_archive_manifest -o MANIFEST -p . -e EXEC -a "data/data1=data/data1, data/data2=data/data2"
     ctx.actions.run(
@@ -57,8 +72,9 @@ def _pkg_far_impl(ctx):
     )
 
     # far create --archive=FAR --manifest=MANIFEST
+    additional_files = ctx.files.services + ctx.files.drivers + ctx.files.libraries + ctx.files.tests + ctx.files.resources
     ctx.actions.run(
-        inputs = ctx.files.private_data + ctx.files.drivers + ctx.files.libraries + [ctx.file.exec, ctx.file.meta, ctx.file.rscs, archive_manifest],
+        inputs = ctx.files.private_data + additional_files + [ctx.file.exec, ctx.file.meta, ctx.file.rscs, archive_manifest],
         arguments = ["create", "--archive=" + ctx.outputs.out.path, "--manifest=" + archive_manifest.path],
         executable = far,
         outputs = [ctx.outputs.out],
@@ -69,6 +85,9 @@ _pkg_far = rule(
     implementation = _pkg_far_impl,
     attrs = {
         "exec": attr.label(allow_single_file = True, mandatory = True),
+        "services": attr.label_list(allow_files = True),
+        "tests": attr.label_list(allow_files = True),
+        "resources": attr.label_list(allow_files = True),
         "drivers": attr.label_list(allow_files = True),
         "libraries": attr.label_list(allow_files = True),
         "private_data": attr.label_list(allow_files = True),

@@ -249,6 +249,8 @@ def _nbl_sdk_impl(ctx):
         host = HostInfo(
             create_archive_manifest = ctx.file.host_create_archive_manifest,
             far = ctx.file.host_far,
+            fidlc = ctx.file.host_fidlc,
+            fidlgen = ctx.file.host_fidlgen,
         ),
         target = TargetInfo(
             nblruncmd = ctx.file.target_nblruncmd,
@@ -265,6 +267,8 @@ nbl_sdk = rule(
         "otrp_suite": attr.label(allow_files = True, mandatory = True),
         "host_create_archive_manifest": attr.label(allow_single_file = True, mandatory = True),
         "host_far": attr.label(allow_single_file = True, mandatory = True),
+        "host_fidlc": attr.label(allow_single_file = True, mandatory = True),
+        "host_fidlgen": attr.label(allow_single_file = True, mandatory = True),
         "target_nblruncmd": attr.label(allow_single_file = True, mandatory = True),
         "target_taloaderproxyd": attr.label(allow_single_file = True, mandatory = True),
     },

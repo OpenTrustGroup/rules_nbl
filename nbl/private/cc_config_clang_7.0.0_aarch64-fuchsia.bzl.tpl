@@ -126,6 +126,9 @@ def _impl(ctx):
                         flags = [
                             "--target=aarch64-fuchsia",
                             "--sysroot=%{SYSROOT_PATH}%",
+                            "-Wall",
+                            "-Werror",
+                            "-fno-rtti",
                         ],
                     ),
                 ],
@@ -187,6 +190,7 @@ def _impl(ctx):
                             "-no-canonical-prefixes",
                             "--target=aarch64-fuchsia",
                             "--sysroot=%{SYSROOT_PATH}%",
+                            "-L%{SYSROOT_PATH}%/fdio/lib",
                             "-lfdio",
                             "-lzircon",
                             "-lc",

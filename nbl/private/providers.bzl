@@ -35,6 +35,8 @@ HostInfo = provider(
     fields = {
         "create_archive_manifest": "A host tool to create manifest for FAR.",
         "far": "A host tool to create, list, extract FAR.",
+        "fidlc": "FIDL compiler.",
+        "fidlgen": "FIDL code generator.",
     },
 )
 

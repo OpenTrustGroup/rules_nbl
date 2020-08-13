@@ -33,6 +33,17 @@ filegroup(
 )
 
 filegroup(
+    name = "fidlc",
+    srcs = ["host/x64/fidlc"],
+)
+
+
+filegroup(
+    name = "fidlgen",
+    srcs = ["host/x64/fidlgen"],
+)
+
+filegroup(
     name = "otrp_provision_exe",
     srcs = ["run/otrp/provision_tool/provision_create_ha_by_config.sh"],
 )
@@ -89,6 +100,8 @@ nbl_sdk(
     name = "%{SDK_NAME}%",
     host_create_archive_manifest = ":create_archive_manifest",
     host_far = ":far",
+    host_fidlc = ":fidlc",
+    host_fidlgen = ":fidlgen",
     otrp_keystore = ":otrp_keystore",
     otrp_provision_exe = ":otrp_provision_exe",
     otrp_suite = ":otrp_suite",
