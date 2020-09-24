@@ -81,5 +81,39 @@ cc_library(
         "include/lib/zx/*.h",
         "include/fbl/*.h"
     ]),
+    strip_include_prefix = "include",
+    visibility = [ "//visibility:public" ]
+)
+
+cc_library(
+    name = "boringssl",
+    srcs = [
+        "boringssl/lib/libcrypto.so",
+    ],
+    hdrs = glob([
+        "boringssl/include/**/*.h",
+    ]),
+    strip_include_prefix = "boringssl/include",
+    visibility = [ "//visibility:public" ]
+)
+
+cc_library(
+    name = "keymaster",
+    srcs = [
+        "trusty/trusty/user/base/lib/keymaster/lib/libkeymaster.a",
+    ],
+    hdrs = glob([
+        "trusty/trusty/user/base/lib/keymaster/include/**/*.h",
+    ]),
+    strip_include_prefix = "trusty/trusty/user/base/lib/keymaster/include",
+    visibility = [ "//visibility:public" ]
+)
+
+cc_library(
+    name = "keymaster_interface",
+    hdrs = glob([
+        "trusty/trusty/user/base/interface/keymaster/include/**/*.h",
+    ]),
+    strip_include_prefix = "trusty/trusty/user/base/interface/keymaster/include",
     visibility = [ "//visibility:public" ]
 )
