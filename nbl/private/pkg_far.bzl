@@ -31,11 +31,9 @@ def _pkg_far_impl(ctx):
     far = sdk.host.far
 
     data_files = []
-    for f in ctx.files.data:
-        # The original f.path looks like 'hello_far/data/data3',
-        # and by design the manifest needs 'data/data3', so remove hello_far/'.
+    for f in ctx.files.private_data:
         src_path = f.path
-        dst_path = f.path[len(ctx.label.package) + 1:]
+        dst_path = "data/" + f.basename
         data_files.append("%s=%s" % (dst_path, src_path))
 
     for f in ctx.files.drivers:
@@ -52,7 +50,7 @@ def _pkg_far_impl(ctx):
 
     # create_archive_manifest -o MANIFEST -p . -e EXEC -a "data/data1=data/data1, data/data2=data/data2"
     ctx.actions.run(
-        inputs = ctx.files.data + [ctx.file.exec, ctx.file.meta, ctx.file.rscs],
+        inputs = ctx.files.private_data + [ctx.file.exec, ctx.file.meta, ctx.file.rscs],
         arguments = ["-p", ctx.label.package, "-o", archive_manifest.path, "-e", ctx.file.exec.path, "-a", ",".join(data_files)],
         executable = create_archive_manifest,
         outputs = [archive_manifest],
@@ -60,7 +58,7 @@ def _pkg_far_impl(ctx):
 
     # far create --archive=FAR --manifest=MANIFEST
     ctx.actions.run(
-        inputs = ctx.files.data + ctx.files.drivers + ctx.files.libraries + [ctx.file.exec, ctx.file.meta, ctx.file.rscs, archive_manifest],
+        inputs = ctx.files.private_data + ctx.files.drivers + ctx.files.libraries + [ctx.file.exec, ctx.file.meta, ctx.file.rscs, archive_manifest],
         arguments = ["create", "--archive=" + ctx.outputs.out.path, "--manifest=" + archive_manifest.path],
         executable = far,
         outputs = [ctx.outputs.out],
@@ -73,7 +71,7 @@ _pkg_far = rule(
         "exec": attr.label(allow_single_file = True, mandatory = True),
         "drivers": attr.label_list(allow_files = True),
         "libraries": attr.label_list(allow_files = True),
-        "data": attr.label_list(allow_files = True),
+        "private_data": attr.label_list(allow_files = True),
         "meta": attr.label(allow_single_file = True),
         "rscs": attr.label(allow_single_file = True),
         "out": attr.output(),
