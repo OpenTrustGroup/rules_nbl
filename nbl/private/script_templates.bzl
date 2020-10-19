@@ -14,98 +14,148 @@
 
 """Script templates"""
 
+_parse_target_device = """
+# use TARGET_DEVICE env var if provided, else use the value provided by bazel
+readonly target_device="${{TARGET_DEVICE:-{device}}}"
+
+declare sh_exec=""
+declare sh_opts=""
+declare sh_host=""
+declare cp_exec=""
+declare cp_opts=""
+declare cp_host=""
+
+IFS=':'
+read -a device_params <<< "$target_device"
+
+unset IFS
+
+if [[ "${{device_params[0]}}" == "ssh" ]]; then
+  sh_exec="ssh"
+  sh_opts="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -p ${{device_params[2]}}"
+  sh_host="${{device_params[1]}}"
+  cp_exec="scp"
+  cp_opts="-r -o StrictHostKeyChecking=no -o ConnectTimeout=5 -P ${{device_params[2]}}"
+  cp_host="${{device_params[1]}}:"
+elif [[ "${{device_params[0]}}" == "adb" ]]; then
+  sh_exec="adb"
+  sh_opts="-s ${{device_params[1]}} shell"
+  sh_host=""
+  cp_exec="adb"
+  cp_opts="-s ${{device_params[1]}} push"
+  cp_host=""
+else
+  echo "Unsupported target device: $target_device"
+  exit 1
+fi
+"""
+
 _tee_provision_tpl = """
 #!/bin/bash
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
+%s
+
 echo "Provisioning..."
-{sh_exec} {sh_opts} {sh_host} rm -rf /data/nebula_ta
-{sh_exec} {sh_opts} {sh_host} mkdir -p /data/
-{cp_exec} {cp_opts} {keystore}/key_store_test {cp_host}/data/nebula_ta
-{cp_exec} {cp_opts} {nblruncmd} {cp_host}/data/nblruncmd
-{sh_exec} {sh_opts} {sh_host} chmod 755 /data/nblruncmd
-{sh_exec} {sh_opts} {sh_host} nbl_daemon -p /data/nebula_ta
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} rm -rf /data/nebula_ta
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} mkdir -p /data/
+eval ${{cp_exec}} ${{cp_opts}} {keystore}/key_store_test ${{cp_host}}/data/nebula_ta
+eval ${{cp_exec}} ${{cp_opts}} {nblruncmd} ${{cp_host}}/data/nblruncmd
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} chmod 755 /data/nblruncmd
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} nbl_daemon -p /data/nebula_ta
 echo "Done"
-"""
+""" % (_parse_target_device)
 
 _tee_launch_tpl = """
 #!/bin/bash
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
+%s
+
 if [[ "${{@}}" != "" ]]; then
     ARGS="-a \'${{@}}\'"
 fi
 
 UUID="$({uuid})"
 echo "Launching..."
-{sh_exec} {sh_opts} {sh_host} /data/nblruncmd killall ${{UUID%-*}}* || echo
-{sh_exec} {sh_opts} {sh_host} nbl_daemon -l ${{UUID}} ${{ARGS}}
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} /data/nblruncmd killall ${{UUID%%-*}}* || echo
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} nbl_daemon -l ${{UUID}} ${{ARGS}}
 echo "Done"
-"""
+""" % (_parse_target_device)
 
 _tee_trace_tpl = """
 #!/bin/bash
+set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
+
+%s
+
 trap func "SIGINT"
 func() {{
-    PID=`{sh_exec} {sh_opts} {sh_host} ps -Ao pid,comm | grep nblruncmd | awk {{'print \$1'}} | head -n 1`
-    {sh_exec} {sh_opts} {sh_host} kill -SIGINT ${{PID}}
+    PID=$(eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} ps -Ao pid,comm | grep nblruncmd | awk {{'print $1'}} | head -n 1)
+    eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} kill -SIGINT ${{PID}}
 }}
-set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
 if [[ "${{@}}" != "" ]]; then
     ARGS="-a \'${{@}}\'"
 fi
 
 UUID="$({uuid})"
-{sh_exec} {sh_opts} {sh_host} /data/nblruncmd killall ${{UUID%-*}}* || echo
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} /data/nblruncmd killall ${{UUID%%-*}}* || echo
 
-{sh_exec} {sh_opts} {sh_host} /data/nblruncmd trace record  --uuid=${{UUID}} ${{ARGS}} &
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} /data/nblruncmd trace record  --uuid=${{UUID}} ${{ARGS}} &
 PID=$!
 wait ${{PID}} || echo
-{sh_exec} {sh_opts} {sh_host} /data/nblruncmd cat /data/trace.json > trace.json
-"""
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} /data/nblruncmd cat /data/trace.json > trace.json
+""" % (_parse_target_device)
 
 _tee_attach_tpl = """
 #!/bin/bash
-trap func "SIGINT"
-func() {{
-    PID=`{sh_exec} {sh_opts} {sh_host} ps -Ao pid,comm | grep nblruncmd | awk {{'print \$1'}} | head -n 1`
-    {sh_exec} {sh_opts} {sh_host} kill -SIGINT ${{PID}}
-}}
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
+%s
+
+trap func "SIGINT"
+func() {{
+    PID=$(eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} ps -Ao pid,comm | grep nblruncmd | awk {{'print $1'}} | head -n 1)
+    eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} kill -SIGINT ${{PID}}
+}}
+
 UUID="$({uuid})"
-PID=`{sh_exec} {sh_opts} {sh_host} /data/nblruncmd ps | grep ${{UUID%-*}} | grep -oE "p:([0-9]+)" | sed s/p:// || echo`
+PID=$(eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} /data/nblruncmd ps | grep ${{UUID%%-*}} | grep -oE "p:([0-9]+)" | sed s/p:// || echo)
 if [[ "${{PID}}" == "" ]]; then
     echo "You should launch the process first"
     exit 0
 fi
 
-{sh_exec} {sh_opts} {sh_host} /data/nblruncmd trace record  --attach=${{PID}} &
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} /data/nblruncmd trace record  --attach=${{PID}} &
 PID=$!
 wait ${{PID}} || echo
-{sh_exec} {sh_opts} {sh_host} /data/nblruncmd cat /data/trace.json > trace.json
-"""
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} /data/nblruncmd cat /data/trace.json > trace.json
+""" % (_parse_target_device)
 
 _ree_provision_tpl = """
 #!/bin/bash
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
+%s
+
 echo "Provisioning..."
-{sh_exec} {sh_opts} {sh_host} mkdir -p /data/
-{cp_exec} {cp_opts} {exec_path} {cp_host}/data/{exec_name}
-{sh_exec} {sh_opts} {sh_host} chmod 755 /data/{exec_name}
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} mkdir -p /data/
+eval ${{cp_exec}} ${{cp_opts}} ${{exec_path}} ${{cp_host}}/data/{exec_name}
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} chmod 755 /data/{exec_name}
 echo "Done"
-"""
+""" % (_parse_target_device)
 
 _ree_launch_tpl = """
 #!/bin/bash
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
+%s
+
 echo "Launching..."
-{sh_exec} {sh_opts} {sh_host} /data/{exec_name}
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} /data/{exec_name}
 echo "Done"
-"""
+""" % (_parse_target_device)
 
 _host_read_uuid_tpl = """
 #!/bin/bash

@@ -15,8 +15,10 @@
 load("@rules_cc//cc:defs.bzl", "cc_toolchain")
 load("@io_bazel_rules_nbl//nbl/private:sdk.bzl", "nbl_sdk")
 load("@io_bazel_rules_nbl//nbl/private:nbl_toolchain.bzl", "declare_nbl_toolchain")
+load("@sdk_info//:rich_os.bzl", "rich_os")
 load(":cc_config-aarch64-fuchsia.bzl", cc_config_fuchsia = "cc_toolchain_config")
 load(":cc_config-aarch64-linux-gnu.bzl", cc_config_linux = "cc_toolchain_config")
+
 
 package(default_visibility = ["//visibility:public"])
 
@@ -75,18 +77,12 @@ filegroup(
 
 filegroup(
     name = "nblruncmd",
-    srcs = select({
-        "@io_bazel_rules_nbl//nbl:cfg_android": ["android/bin/nblruncmd"],
-        "//conditions:default": ["ree/bin/nblruncmd"],
-    }),
+    srcs = ["android/bin/nblruncmd"] if rich_os == "android" else ["ree/bin/nblruncmd"],
 )
 
 filegroup(
     name = "taloaderproxyd",
-    srcs = select({
-        "@io_bazel_rules_nbl//nbl:cfg_android": ["android/bin/taloaderproxyd"],
-        "//conditions:default": ["ree/bin/taloaderproxyd"],
-    }),
+    srcs = ["android/bin/taloaderproxyd"] if rich_os == "android" else ["ree/bin/taloaderproxyd"],
 )
 
 nbl_sdk(

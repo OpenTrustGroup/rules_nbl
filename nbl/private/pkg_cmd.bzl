@@ -26,6 +26,8 @@ load(
     "TEE_SCRIPTS",
 )
 
+load("@sdk_info//:device.bzl", "device")
+
 def _otrp_keystore_impl(ctx):
     toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
     sdk = toolchain.sdk
@@ -119,7 +121,6 @@ _register_otrp_cmd = rule(
 def _otrp_params_impl(ctx):
     toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
     sdk = toolchain.sdk
-    selected_device = ctx.attr.device[0]
 
     # TODO: Remove nblruncmd deps in non-nebula build
     runfiles = [ctx.file.srcs, sdk.target.nblruncmd]
@@ -134,33 +135,16 @@ def _otrp_params_impl(ctx):
         "nblruncmd": sdk.target.nblruncmd.short_path,
         "taloaderproxyd": sdk.target.taloaderproxyd.short_path,
     }
-    if selected_device == "android":
-        substitutions.update({
-            "sh_exec": "adb",
-            "sh_opts": "shell",
-            "sh_host": "",
-            "cp_exec": "adb",
-            "cp_opts": "push",
-            "cp_host": "",
-        })
-    elif selected_device == "qemu":
-        substitutions.update({
-            "sh_exec": "ssh",
-            "sh_opts": "-o StrictHostKeyChecking=no",
-            "sh_host": "root@192.168.3.53",
-            "cp_exec": "scp",
-            "cp_opts": "-r -o StrictHostKeyChecking=no",
-            "cp_host": "root@192.168.3.53:",
-        })
-    else:
-        fail("Unsupported device: {} (expected 'qemu' or 'android').".format(ctx.attr.device))
+
+    substitutions.update({
+        "device": device,
+    })
 
     return [ScriptInfo(substitutions = substitutions, runfiles = runfiles)]
 
 _otrp_params = rule(
     implementation = _otrp_params_impl,
     attrs = {
-        "device": attr.string_list(),
         "keystore": attr.label_list(allow_files = True),
         "uuid": attr.label_list(allow_files = True),
         "srcs": attr.label(allow_single_file = True, mandatory = True),
@@ -195,10 +179,6 @@ def nbl_register_pkgcmds(srcs, name = "default"):
     # generate providers for different configs
     _otrp_params(
         name = "_otrp_params-%s" % name,
-        device = select({
-            "@io_bazel_rules_nbl//nbl:cfg_android": ["android"],
-            "//conditions:default": ["qemu"],
-        }),
         keystore = select({
             "@io_bazel_rules_nbl//platforms:fuchsia": [":otrp_keystore-%s" % name],
             "@io_bazel_rules_nbl//platforms:linux": [],
