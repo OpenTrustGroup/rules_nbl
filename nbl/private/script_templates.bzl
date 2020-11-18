@@ -32,17 +32,17 @@ unset IFS
 
 if [[ "${{device_params[0]}}" == "ssh" ]]; then
   sh_exec="ssh"
-  sh_opts="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -p ${{device_params[2]}}"
-  sh_host="${{device_params[1]}}"
+  sh_opts="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -p ${{device_params[3]}}"
+  sh_host="${{device_params[1]}}@${{device_params[2]}}"
   cp_exec="scp"
-  cp_opts="-r -o StrictHostKeyChecking=no -o ConnectTimeout=5 -P ${{device_params[2]}}"
-  cp_host="${{device_params[1]}}:"
+  cp_opts="-r -o StrictHostKeyChecking=no -o ConnectTimeout=5 -P ${{device_params[3]}}"
+  cp_host="${{device_params[1]}}@${{device_params[2]}}:"
 elif [[ "${{device_params[0]}}" == "adb" ]]; then
   sh_exec="adb"
-  sh_opts="-s ${{device_params[1]}} shell"
+  sh_opts="-s ${{device_params[1]}} -H ${{device_params[2]}} -P ${{device_params[3]}} shell"
   sh_host=""
   cp_exec="adb"
-  cp_opts="-s ${{device_params[1]}} push"
+  cp_opts="-s ${{device_params[1]}} -H ${{device_params[2]}} -P ${{device_params[3]}} push"
   cp_host=""
 else
   echo "Unsupported target device: $target_device"
