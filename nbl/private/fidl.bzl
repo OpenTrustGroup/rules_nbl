@@ -78,6 +78,14 @@ def fidl(name, sources):
         data = [
             ":%s.gen" % name,
         ],
+        deps = [
+            "@nbl_sdk//hee/fidl_cpp",
+            "@nbl_sdk//hee/fidl",
+            "@nbl_sdk//hee/async",
+            "@nbl_sdk//hee/async-default",
+            "@nbl_sdk//hee/async-loop",
+            "@nbl_sdk//hee/fdio",
+        ],
         strip_include_prefix = ".",
         visibility = ["//visibility:public"],
     )
