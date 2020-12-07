@@ -69,6 +69,27 @@ cc_library(
 )
 
 cc_library(
+    name = "nbl_gui",
+    srcs = [ "nbl_gui/lib/libnbl_gui.so" ],
+    hdrs = glob([
+        "nbl_gui/include/**/*.h",
+        "nbl_gui/include/**/*.hh",
+    ]),
+    strip_include_prefix = "nbl_gui/include",
+    visibility = [ "//visibility:public" ]
+)
+
+cc_library(
+    name = "nbl_qrcode",
+    srcs = [ "nbl_qrcode/lib/libnbl_qrcode.a" ],
+    hdrs = glob([
+        "nbl_qrcode/include/**/*.h",
+    ]),
+    strip_include_prefix = "nbl_qrcode/include",
+    visibility = [ "//visibility:public" ]
+)
+
+cc_library(
     name = "trace",
     srcs = [
         "lib/libtrace.a",
