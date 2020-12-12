@@ -184,11 +184,6 @@ def _sdk_build_file(ctx):
         "toolchains/linaro-gcc/aarch64-linux-gnu",
     )
 
-    ctx.template(
-        "hee/BUILD.bazel",
-        Label("@io_bazel_rules_nbl//nbl/private:nbl_lib.bzl.tpl"),
-    )
-
 def _nbl_lib_impl(ctx):
     ctx.symlink("../{}/hee".format(ctx.attr.sdk), "hee")
     ctx.template(
