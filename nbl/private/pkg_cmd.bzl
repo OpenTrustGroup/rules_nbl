@@ -27,6 +27,7 @@ load(
 )
 
 load("@sdk_info//:device.bzl", "device")
+load("@sdk_info//:keystore_path.bzl", "keystore_path")
 
 def _otrp_keystore_impl(ctx):
     toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
@@ -39,7 +40,7 @@ def _otrp_keystore_impl(ctx):
         inputs = [otrp_keystore, ctx.file.srcs, ctx.file.sd_privilege],
         arguments = [
             "-c",
-            otrp_keystore.path,
+            keystore_path if keystore_path else otrp_keystore.path,
             "-e",
             ctx.file.srcs.path,
             "-o",
@@ -122,6 +123,12 @@ def _otrp_params_impl(ctx):
     toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
     sdk = toolchain.sdk
 
+    final_keystore_path = ""
+    if ctx.files.keystore:
+        tmp_path = keystore_path if keystore_path else sdk.otrp.keystore.path
+        provision_folder = tmp_path.split("/").pop()
+        final_keystore_path = "/".join([ctx.files.keystore[0].short_path, provision_folder])
+
     # TODO: Remove nblruncmd deps in non-nebula build
     runfiles = [ctx.file.srcs, sdk.target.nblruncmd]
     runfiles += [sdk.target.taloaderproxyd]
@@ -131,7 +138,7 @@ def _otrp_params_impl(ctx):
         "exec_path": ctx.file.srcs.short_path,
         "exec_name": ctx.file.srcs.basename,
         "uuid": ctx.files.uuid[0].short_path if ctx.files.uuid else "",
-        "keystore": ctx.files.keystore[0].short_path if ctx.files.keystore else "",
+        "keystore": final_keystore_path,
         "nblruncmd": sdk.target.nblruncmd.short_path,
         "taloaderproxyd": sdk.target.taloaderproxyd.short_path,
     }

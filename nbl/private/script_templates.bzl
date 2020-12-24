@@ -59,7 +59,7 @@ set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 echo "Provisioning..."
 eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} rm -rf /data/nebula_ta
 eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} mkdir -p /data/
-eval ${{cp_exec}} ${{cp_opts}} {keystore}/key_store_test ${{cp_host}}/data/nebula_ta
+eval ${{cp_exec}} ${{cp_opts}} {keystore} ${{cp_host}}/data/nebula_ta
 eval ${{cp_exec}} ${{cp_opts}} {nblruncmd} ${{cp_host}}/data/nblruncmd
 eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} chmod 755 /data/nblruncmd
 eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} nbl_daemon -p /data/nebula_ta
