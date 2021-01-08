@@ -126,8 +126,6 @@ def _impl(ctx):
                         flags = [
                             "--target=aarch64-fuchsia",
                             "--sysroot=%{SYSROOT_PATH}%",
-                            "--Wall",
-                            "--Werror",
                             "-fno-rtti",
                         ],
                     ),
