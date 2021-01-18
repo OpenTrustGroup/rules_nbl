@@ -161,36 +161,24 @@ _host_read_uuid_tpl = """
 #!/bin/bash
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
-grok_offset() {{
-  local line
-  while read line; do
-    case "$line" in
-    # Section Headers for .note.nebula.app.manifest
-    #   [ 2] .note.nebula.app.manifest NOTE            00000000000002b8 0002b8 0000a8 00   A  0   0  4
-    *.note.nebula.app.manifest*NOTE*)
-      local words=($line)
-      local off=$(printf '%#u' 0x${{words[4]}})
-      echo $off
-      return 0
-      ;;
-    esac
-  done
-  return 1
-}}
+ta_file="{exec}"
+tmp_out_file="$(basename {exec}).json"
+uuid_regex='"uuid":"([0-9a-f\-]+)"'
+elf_tool_path="{sdk_path}/run/otrp/elf_tool"
 
-# See |nbl_app_manifest.h| for details
-off=$(($(readelf -W -S {exec} | grok_offset) + 0x18))
+echo "" > ${{tmp_out_file}}
+java -jar ${{elf_tool_path}}/nebula_elf_tool.jar get_manifest \
+      --in_file "${{ta_file}}" \
+      --out_file ${{tmp_out_file}} \
+      --far_tool_file ${{elf_tool_path}}/far > /dev/null
 
-# Read 16 bytes (32 chars) into a string
-v=$(hexdump -s ${{off}} -n 16 -e '/1 "%02x"' {exec})
+if [[ "$(cat ${{tmp_out_file}})" =~ $uuid_regex ]]; then
+  echo ${{BASH_REMATCH[1]}}
+else
+  >&2 echo "Cannot find UUID in: \"${{ta_file}}\""
+  exit 1
+fi
 
-# Fill each field from array values and arrange by endian
-time_low=$(printf %s "${{v:6:2}}${{v:4:2}}${{v:2:2}}${{v:0:2}}")
-time_mid=$(printf %s "${{v:10:2}}${{v:8:2}}")
-time_high_version=$(printf %s "${{v:14:2}}${{v:12:2}}")
-clock_seq=$(printf %s "${{v:16:4}}")
-node=$(printf %s "${{v:20}}")
-echo "${{time_low}}-${{time_mid}}-${{time_high_version}}-${{clock_seq}}-${{node}}"
 """
 
 REE_SCRIPTS = {

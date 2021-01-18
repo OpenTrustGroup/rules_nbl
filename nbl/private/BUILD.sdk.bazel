@@ -117,6 +117,7 @@ filegroup(
     srcs = glob([
         "hee/**",
         "host/**",
+        "test_suite/**",
     ]),
 )
 

@@ -226,7 +226,7 @@ def nbl_register_sdk(name = "nbl_sdk", version = None, path = None):
     native.register_toolchains("@{}//:nbl_toolchain_dummy".format(name))
 
 def _nbl_local_sdk_impl(ctx):
-    for entry in ["android", "hee", "host", "ree", "run", "toolchains"]:
+    for entry in ["android", "hee", "host", "ree", "run", "toolchains", "test_suite"]:
         ctx.symlink(ctx.attr.path + "/" + entry, entry)
     _sdk_build_file(ctx)
 

@@ -27,6 +27,7 @@ load(
 )
 
 load("@sdk_info//:device.bzl", "device")
+load("@sdk_info//:sdk_path.bzl", "sdk_path")
 load("@sdk_info//:keystore_path.bzl", "keystore_path")
 
 def _otrp_keystore_impl(ctx):
@@ -68,7 +69,10 @@ def _uuid_impl(ctx):
     if PackageInfo in ctx.attr.srcs:
         exec = ctx.attr.srcs[PackageInfo].exec
     script = ctx.actions.declare_file(ctx.label.name + ".sh")
-    script_content = HOST_SCRIPTS["read_uuid"].format(exec = exec.short_path)
+    script_content = HOST_SCRIPTS["read_uuid"].format(
+        exec = exec.short_path,
+        sdk_path = sdk_path
+    )
     ctx.actions.write(script, script_content, is_executable = True)
 
     return [DefaultInfo(
