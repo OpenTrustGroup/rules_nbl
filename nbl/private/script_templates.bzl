@@ -15,8 +15,7 @@
 """Script templates"""
 
 _parse_target_device = """
-# use TARGET_DEVICE env var if provided, else use the value provided by bazel
-readonly target_device="${{TARGET_DEVICE:-{device}}}"
+readonly target_device="${{GX_DEVICE}}"
 
 declare sh_exec=""
 declare sh_opts=""
@@ -60,8 +59,6 @@ echo "Provisioning..."
 eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} rm -rf /data/nebula_ta
 eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} mkdir -p /data/
 eval ${{cp_exec}} ${{cp_opts}} {keystore} ${{cp_host}}/data/nebula_ta
-eval ${{cp_exec}} ${{cp_opts}} {nblruncmd} ${{cp_host}}/data/nblruncmd
-eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} chmod 755 /data/nblruncmd
 eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} nbl_daemon -p /data/nebula_ta
 echo "Done"
 """ % (_parse_target_device)

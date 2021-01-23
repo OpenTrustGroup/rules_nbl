@@ -26,7 +26,6 @@ load(
     "TEE_SCRIPTS",
 )
 
-load("@sdk_info//:device.bzl", "device")
 load("@sdk_info//:sdk_path.bzl", "sdk_path")
 load("@sdk_info//:keystore_path.bzl", "keystore_path")
 
@@ -146,10 +145,6 @@ def _otrp_params_impl(ctx):
         "nblruncmd": sdk.target.nblruncmd.short_path,
         "taloaderproxyd": sdk.target.taloaderproxyd.short_path,
     }
-
-    substitutions.update({
-        "device": device,
-    })
 
     return [ScriptInfo(substitutions = substitutions, runfiles = runfiles)]
 
