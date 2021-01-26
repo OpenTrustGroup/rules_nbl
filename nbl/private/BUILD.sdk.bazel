@@ -44,6 +44,19 @@ filegroup(
 )
 
 filegroup(
+    name = "nodejs",
+    srcs = glob([
+        "host/nodejs/**",
+        "host/javascript/**",
+    ])
+)
+
+filegroup(
+    name = "css_validator_exe",
+    srcs = ["run/validate-css.sh"],
+)
+
+filegroup(
     name = "otrp_provision_exe",
     srcs = ["run/otrp/provision_tool/provision_create_ha_by_config.sh"],
 )
@@ -102,6 +115,8 @@ nbl_sdk(
     host_far = ":far",
     host_fidlc = ":fidlc",
     host_fidlgen = ":fidlgen",
+    host_nodejs = ":nodejs",
+    css_validator_exe = ":css_validator_exe",
     otrp_keystore = ":otrp_keystore",
     otrp_provision_exe = ":otrp_provision_exe",
     otrp_suite = ":otrp_suite",

@@ -37,6 +37,8 @@ HostInfo = provider(
         "far": "A host tool to create, list, extract FAR.",
         "fidlc": "FIDL compiler.",
         "fidlgen": "FIDL code generator.",
+        "nodejs": "NodeJS engine.",
+        "css_validator_exe": "CSS stylesheet validator.",
     },
 )
 

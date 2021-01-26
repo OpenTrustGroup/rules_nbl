@@ -251,6 +251,8 @@ def _nbl_sdk_impl(ctx):
             far = ctx.file.host_far,
             fidlc = ctx.file.host_fidlc,
             fidlgen = ctx.file.host_fidlgen,
+            nodejs = ctx.files.host_nodejs,
+            css_validator_exe = ctx.file.css_validator_exe,
         ),
         target = TargetInfo(
             nblruncmd = ctx.file.target_nblruncmd,
@@ -269,6 +271,8 @@ nbl_sdk = rule(
         "host_far": attr.label(allow_single_file = True, mandatory = True),
         "host_fidlc": attr.label(allow_single_file = True, mandatory = True),
         "host_fidlgen": attr.label(allow_single_file = True, mandatory = True),
+        "host_nodejs": attr.label(allow_files = True, mandatory = True),
+        "css_validator_exe": attr.label(allow_single_file = True, mandatory = True),
         "target_nblruncmd": attr.label(allow_single_file = True, mandatory = True),
         "target_taloaderproxyd": attr.label(allow_single_file = True, mandatory = True),
     },

@@ -28,6 +28,8 @@ def _pkg_far_impl(ctx):
     toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
     sdk = toolchain.sdk
     create_archive_manifest = sdk.host.create_archive_manifest
+    css_validator = sdk.host.css_validator_exe
+    nodejs = sdk.host.nodejs
     far = sdk.host.far
 
     data_files = []
@@ -65,11 +67,25 @@ def _pkg_far_impl(ctx):
         dst_path = "resources/" + value
         data_files.append("%s=%s" % (dst_path, src_path))
 
+    additional_deps = []
+    if len(ctx.files.private_data) > 0:
+        staging_file = ctx.actions.declare_file("css_validate_complete." + ctx.attr.name)
+
+        input_dir = ctx.files.private_data[0].dirname
+        ctx.actions.run(
+            inputs = ctx.files.private_data,
+            arguments = ["-i", input_dir, "-o", staging_file.path],
+            executable = css_validator,
+            outputs = [staging_file],
+            tools = nodejs,
+        )
+        additional_deps.append(staging_file)
+
     archive_manifest = ctx.actions.declare_file("archive_manifest." + ctx.attr.name)
 
     # create_archive_manifest -o MANIFEST -p . -e EXEC -a "data/data1=data/data1, data/data2=data/data2"
     ctx.actions.run(
-        inputs = ctx.files.private_data + [ctx.file.exec, ctx.file.meta, ctx.file.rscs],
+        inputs = ctx.files.private_data + [ctx.file.exec, ctx.file.meta, ctx.file.rscs] + additional_deps,
         arguments = ["-p", ctx.label.package, "-o", archive_manifest.path, "-e", ctx.file.exec.path, "-a", ",".join(data_files)],
         executable = create_archive_manifest,
         outputs = [archive_manifest],
