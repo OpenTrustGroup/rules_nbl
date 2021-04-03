@@ -130,6 +130,61 @@ wait ${{PID}} || echo
 eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} /data/nblruncmd cat /data/trace.json > trace.json
 """ % (_parse_target_device)
 
+_tee_export_tpl = """
+#!/bin/bash
+set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
+
+readonly unsigned_ta_path="{exec_path}"
+readonly signed_ta_path="{keystore}"
+
+function show-help() {{
+  echo ""
+  echo "Available options:"
+  echo "  -s                export signed TA image (default: export unsigned TA image)"
+  echo "  -o  <out-dir>     output directory"
+  echo ""
+}}
+
+echo "Exporting TA image..."
+
+declare export_unsigned_ta="true"
+declare output_dir=""
+
+while [[ $# -ne 0 ]]; do
+  case "$1" in
+    -s)
+      export_unsigned_ta="false"
+      ;;
+    -o)
+      if [[ $# -lt 2 ]]; then
+        show-help
+        exit 1
+      fi
+      output_dir="$(realpath $2)"
+      shift
+      ;;
+    -h)
+      show-help
+      exit 0
+  esac
+  shift
+done
+
+if [[ ! -e "$output_dir" ]]; then
+  echo "Error: output directory not found: $output_dir"
+  exit 1
+fi
+
+if [[ "$export_unsigned_ta" == "true" ]]; then
+  rm -f "$output_dir/$(basename "$unsigned_ta_path")"
+  cp -L "$unsigned_ta_path" "$output_dir/"
+else
+  cp -r "$signed_ta_path" "$output_dir/"
+fi
+
+echo "Done"
+"""
+
 _ree_provision_tpl = """
 #!/bin/bash
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
@@ -188,6 +243,7 @@ TEE_SCRIPTS = {
     "launch": _tee_launch_tpl,
     "trace": _tee_trace_tpl,
     "attach": _tee_attach_tpl,
+    "export": _tee_export_tpl,
 }
 
 HOST_SCRIPTS = {

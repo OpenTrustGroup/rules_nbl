@@ -235,3 +235,13 @@ def nbl_register_pkgcmds(srcs, name = "default"):
             "@io_bazel_rules_nbl//platforms:linux": [],
         }),
     )
+
+    _register_otrp_cmd(
+        name = "export" if name == "default" else ("export-%s" % name),
+        srcs = srcs,
+        params = ":_otrp_params-%s" % name,
+        template = select({
+            "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["export"]],
+            "@io_bazel_rules_nbl//platforms:linux": [],
+        }),
+    )
