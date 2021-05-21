@@ -27,7 +27,7 @@ load(
 )
 
 load("@sdk_info//:sdk_path.bzl", "sdk_path")
-load("@sdk_info//:keystore_path.bzl", "keystore_path")
+load("@sdk_info//:otrp_keystore_path.bzl", "otrp_keystore_path")
 
 def _otrp_keystore_impl(ctx):
     toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
@@ -40,7 +40,7 @@ def _otrp_keystore_impl(ctx):
         inputs = [otrp_keystore, ctx.file.srcs, ctx.file.sd_privilege],
         arguments = [
             "-c",
-            keystore_path if keystore_path else otrp_keystore.path,
+            otrp_keystore_path if otrp_keystore_path else otrp_keystore.path,
             "-e",
             ctx.file.srcs.path,
             "-o",
@@ -128,7 +128,7 @@ def _otrp_params_impl(ctx):
 
     final_keystore_path = ""
     if ctx.files.keystore:
-        tmp_path = keystore_path if keystore_path else sdk.otrp.keystore.path
+        tmp_path = otrp_keystore_path if otrp_keystore_path else sdk.otrp.keystore.path
         provision_folder = tmp_path.split("/").pop()
         final_keystore_path = "/".join([ctx.files.keystore[0].short_path, provision_folder])
 
