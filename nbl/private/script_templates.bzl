@@ -31,10 +31,10 @@ unset IFS
 
 if [[ "${{device_params[0]}}" == "ssh" ]]; then
   sh_exec="ssh"
-  sh_opts="-o StrictHostKeyChecking=no -o ConnectTimeout=5 -p ${{device_params[3]}}"
+  sh_opts="-F /dev/null -o StrictHostKeyChecking=no -o ConnectTimeout=5 -p ${{device_params[3]}}"
   sh_host="${{device_params[1]}}@${{device_params[2]}}"
   cp_exec="scp"
-  cp_opts="-r -o StrictHostKeyChecking=no -o ConnectTimeout=5 -P ${{device_params[3]}}"
+  cp_opts="-F /dev/null -r -o StrictHostKeyChecking=no -o ConnectTimeout=5 -P ${{device_params[3]}}"
   cp_host="${{device_params[1]}}@${{device_params[2]}}:"
 elif [[ "${{device_params[0]}}" == "adb" ]]; then
   sh_exec="adb"
