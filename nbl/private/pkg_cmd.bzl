@@ -25,7 +25,6 @@ load(
     "REE_SCRIPTS",
     "TEE_SCRIPTS",
 )
-
 load("@sdk_info//:sdk_path.bzl", "sdk_path")
 load("@sdk_info//:otrp_keystore_path.bzl", "otrp_keystore_path")
 
@@ -70,7 +69,7 @@ def _uuid_impl(ctx):
     script = ctx.actions.declare_file(ctx.label.name + ".sh")
     script_content = HOST_SCRIPTS["read_uuid"].format(
         exec = exec.short_path,
-        sdk_path = sdk_path
+        sdk_path = sdk_path,
     )
     ctx.actions.write(script, script_content, is_executable = True)
 
@@ -120,6 +119,16 @@ _register_otrp_cmd = rule(
         "template": attr.string_list(mandatory = True),
     },
     executable = True,
+)
+
+_register_otrp_cmd_test = rule(
+    implementation = _register_otrp_cmd_impl,
+    attrs = {
+        "srcs": attr.label(allow_single_file = True, mandatory = True),
+        "params": attr.label(mandatory = True, providers = [ScriptInfo]),
+        "template": attr.string_list(mandatory = True),
+    },
+    test = True,
 )
 
 def _otrp_params_impl(ctx):
@@ -206,6 +215,17 @@ def nbl_register_pkgcmds(srcs, name = "default"):
         }),
     )
 
+    _register_otrp_cmd_test(
+        name = "provision-test" if name == "default" else ("provision-test-%s" % name),
+        srcs = srcs,
+        params = ":_otrp_params-%s" % name,
+        template = select({
+            "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["provision"]],
+            "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["provision"]],
+        }),
+        tags = ["external"],
+    )
+
     _register_otrp_cmd(
         name = "launch" if name == "default" else ("launch-%s" % name),
         srcs = srcs,
@@ -214,6 +234,17 @@ def nbl_register_pkgcmds(srcs, name = "default"):
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["launch"]],
             "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["launch"]],
         }),
+    )
+
+    _register_otrp_cmd_test(
+        name = "launch-test" if name == "default" else ("launch-test-%s" % name),
+        srcs = srcs,
+        params = ":_otrp_params-%s" % name,
+        template = select({
+            "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["launch_test"]],
+            "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["launch"]],
+        }),
+        tags = ["external"],
     )
 
     _register_otrp_cmd(

@@ -80,6 +80,24 @@ eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} nbl_daemon -l ${{UUID}} ${{ARGS}}
 echo "Done"
 """ % (_parse_target_device)
 
+_tee_launch_test_tpl = """
+#!/bin/bash
+set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
+
+%s
+
+if [[ "${{@}}" != "" ]]; then
+    ARGS="-a \'${{@}}\'"
+fi
+
+UUID="$({uuid})"
+echo "Launching and wait for result..."
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} /data/nblruncmd killall ${{UUID%%-*}}* || echo
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} nbl_daemon -w ${{UUID}} ${{ARGS}}
+echo "Done"
+""" % (_parse_target_device)
+
+
 _tee_trace_tpl = """
 #!/bin/bash
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
@@ -241,6 +259,7 @@ REE_SCRIPTS = {
 TEE_SCRIPTS = {
     "provision": _tee_provision_tpl,
     "launch": _tee_launch_tpl,
+    "launch_test": _tee_launch_test_tpl,
     "trace": _tee_trace_tpl,
     "attach": _tee_attach_tpl,
     "export": _tee_export_tpl,
