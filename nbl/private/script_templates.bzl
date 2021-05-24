@@ -215,7 +215,7 @@ set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
 ta_file="{exec}"
 tmp_out_file="$(basename {exec}).json"
-uuid_regex='"uuid":"([0-9a-f\-]+)"'
+uuid_regex='"uuid":"([0-9a-f\\-]+)"'
 elf_tool_path="{sdk_path}/run/otrp/elf_tool"
 
 echo "" > ${{tmp_out_file}}
