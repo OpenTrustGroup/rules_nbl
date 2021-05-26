@@ -211,7 +211,7 @@ set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
 echo "Provisioning..."
 eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} mkdir -p /data/
-eval ${{cp_exec}} ${{cp_opts}} ${{exec_path}} ${{cp_host}}/data/{exec_name}
+eval ${{cp_exec}} ${{cp_opts}} {exec_path} ${{cp_host}}/data/{exec_name}
 eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} chmod 755 /data/{exec_name}
 echo "Done"
 """ % (_parse_target_device)
