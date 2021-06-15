@@ -104,11 +104,6 @@ filegroup(
     srcs = ["android/bin/nblruncmd"] if rich_os == "android" else ["ree/bin/nblruncmd"],
 )
 
-filegroup(
-    name = "taloaderproxyd",
-    srcs = ["android/bin/taloaderproxyd"] if rich_os == "android" else ["ree/bin/taloaderproxyd"],
-)
-
 nbl_sdk(
     name = "%{SDK_NAME}%",
     host_create_archive_manifest = ":create_archive_manifest",
@@ -122,7 +117,6 @@ nbl_sdk(
     otrp_suite = ":otrp_suite",
     path = "%{SDK_PATH}%",
     target_nblruncmd = ":nblruncmd",
-    target_taloaderproxyd = ":taloaderproxyd",
 )
 
 declare_nbl_toolchain(sdk = "%{SDK_NAME}%")

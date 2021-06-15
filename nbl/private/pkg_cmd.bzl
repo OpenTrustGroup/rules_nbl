@@ -143,7 +143,6 @@ def _otrp_params_impl(ctx):
 
     # TODO: Remove nblruncmd deps in non-nebula build
     runfiles = [ctx.file.srcs, sdk.target.nblruncmd]
-    runfiles += [sdk.target.taloaderproxyd]
     runfiles += ctx.files.uuid if ctx.files.uuid else []
     runfiles += ctx.files.keystore if ctx.files.keystore else []
     substitutions = {
@@ -152,7 +151,6 @@ def _otrp_params_impl(ctx):
         "uuid": ctx.files.uuid[0].short_path if ctx.files.uuid else "",
         "keystore": final_keystore_path,
         "nblruncmd": sdk.target.nblruncmd.short_path,
-        "taloaderproxyd": sdk.target.taloaderproxyd.short_path,
     }
 
     return [ScriptInfo(substitutions = substitutions, runfiles = runfiles)]
