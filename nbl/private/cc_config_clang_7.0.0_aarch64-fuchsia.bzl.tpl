@@ -193,6 +193,8 @@ def _impl(ctx):
                             "-lzircon",
                             "-lc",
                             "-lm",
+                            "-Wl,--icf=all",
+                            "-Wl,--no-undefined",
                         ],
                     ),
                 ],
