@@ -223,7 +223,7 @@ def nbl_register_pkgcmds(srcs, name = "default"):
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["provision"]],
             "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["provision"]],
         }),
-        tags = ["external"],
+        tags = ["exclusive"],
     )
 
     _register_otrp_cmd(
@@ -244,7 +244,7 @@ def nbl_register_pkgcmds(srcs, name = "default"):
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["launch_test"]],
             "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["launch"]],
         }),
-        tags = ["external"],
+        tags = ["exclusive"],
     )
 
     _register_otrp_cmd(
