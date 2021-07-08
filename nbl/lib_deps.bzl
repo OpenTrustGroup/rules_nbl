@@ -39,6 +39,7 @@ NEBULA_APP_DEPS = [
 NEBULA_DRV_DEPS = [
     # "@nbl_sdk//hee/boringssl",
     # "@nbl_sdk//hee/camproxy",
+    "@nbl_sdk//hee/driver",
     "@nbl_sdk//hee/ddk",
     "@nbl_sdk//hee/ddktl",
     # "@nbl_sdk//hee/nbl_attest",
