@@ -98,6 +98,17 @@ eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} nbl_daemon -w ${{UUID}} ${{ARGS}}
 echo "Done"
 """ % (_parse_target_device)
 
+_tee_runcmd_tpl = """
+#!/bin/bash
+set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
+
+%s
+
+echo "Running: {cmd} {arg} ${{@}}"
+eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} /data/nblruncmd {cmd} {arg} ${{@}}
+echo "Done"
+""" % (_parse_target_device)
+
 
 _tee_trace_tpl = """
 #!/bin/bash
@@ -264,6 +275,7 @@ TEE_SCRIPTS = {
     "trace": _tee_trace_tpl,
     "attach": _tee_attach_tpl,
     "export": _tee_export_tpl,
+    "runcmd": _tee_runcmd_tpl,
 }
 
 HOST_SCRIPTS = {
