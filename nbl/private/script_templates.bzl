@@ -60,7 +60,6 @@ eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} rm -rf /data/nebula_ta
 eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} mkdir -p /data/
 eval ${{cp_exec}} ${{cp_opts}} {keystore} ${{cp_host}}/data/nebula_ta
 eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} nbl_daemon -p /data/nebula_ta
-eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} /data/nblruncmd dm scan || echo
 echo "Done"
 """ % (_parse_target_device)
 
