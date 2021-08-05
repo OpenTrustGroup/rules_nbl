@@ -22,6 +22,8 @@ to change for easier maintenance.
 load(
     "@io_bazel_rules_nbl//nbl/private:pkg_cmd.bzl",
     _nbl_register_pkgcmds = "nbl_register_pkgcmds",
+    _runcmd_generator = "runcmd_generator",
 )
 
 nbl_register_pkgcmds = _nbl_register_pkgcmds
+runcmd_generator = _runcmd_generator

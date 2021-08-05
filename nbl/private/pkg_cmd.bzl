@@ -221,7 +221,7 @@ def nbl_register_pkgcmds(srcs, name = "default"):
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["provision"]],
             "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["provision"]],
         }),
-        tags = ["external"],
+        tags = ["exclusive"],
     )
 
     _register_otrp_cmd(
@@ -242,7 +242,7 @@ def nbl_register_pkgcmds(srcs, name = "default"):
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["launch_test"]],
             "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["launch"]],
         }),
-        tags = ["external"],
+        tags = ["exclusive"],
     )
 
     _register_otrp_cmd(
@@ -273,4 +273,29 @@ def nbl_register_pkgcmds(srcs, name = "default"):
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["export"]],
             "@io_bazel_rules_nbl//platforms:linux": [],
         }),
+    )
+
+def _runcmd_generator_impl(ctx):
+    script = ctx.actions.declare_file(ctx.label.name + ".sh")
+    script_content = TEE_SCRIPTS["runcmd"].format(
+        cmd = ctx.attr.cmd,
+        arg = ctx.attr.arg,
+    )
+    ctx.actions.write(script, script_content, is_executable = True)
+    return [DefaultInfo(executable = script)]
+
+_runcmd_generator_test = rule(
+    implementation = _runcmd_generator_impl,
+    attrs = {
+        "cmd": attr.string(mandatory = True),
+        "arg": attr.string(),
+    },
+    test = True,
+)
+
+def runcmd_generator(**kwargs):
+    _runcmd_generator_test(
+        name = kwargs["name"],
+        cmd = kwargs["cmd"],
+        arg = kwargs.get("arg"),
     )
