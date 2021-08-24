@@ -25,7 +25,6 @@ load(
     "REE_SCRIPTS",
     "TEE_SCRIPTS",
 )
-load("@sdk_info//:sdk_path.bzl", "sdk_path")
 load("@sdk_info//:otrp_keystore_path.bzl", "otrp_keystore_path")
 
 def _otrp_keystore_impl(ctx):
@@ -63,13 +62,16 @@ _otrp_keystore = rule(
 )
 
 def _uuid_impl(ctx):
+    toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
+    sdk = toolchain.sdk
+
     exec = ctx.file.srcs
     if PackageInfo in ctx.attr.srcs:
         exec = ctx.attr.srcs[PackageInfo].exec
     script = ctx.actions.declare_file(ctx.label.name + ".sh")
     script_content = HOST_SCRIPTS["read_uuid"].format(
         exec = exec.short_path,
-        sdk_path = sdk_path,
+        sdk_path = sdk.path,
     )
     ctx.actions.write(script, script_content, is_executable = True)
 
@@ -90,6 +92,7 @@ _uuid = rule(
     },
     outputs = {"out": "%{name}.sh"},
     executable = True,
+    toolchains = ["@io_bazel_rules_nbl//nbl:toolchain"],
 )
 
 def _register_otrp_cmd_impl(ctx):
