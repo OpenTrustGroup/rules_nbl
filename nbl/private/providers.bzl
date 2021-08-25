@@ -25,7 +25,7 @@ OtrpInfo = provider(
     doc = "Contains information about the otrp files in Nebula SDK.",
     fields = {
         "provision_exe": "A script to generate otrp commands (json).",
-        "keystore": "A path to output generated otrp commands (json).",
+        "keystore": "A path to keys for generating otrp commands (json).",
         "suite": "The collection of all otrp files.",
     },
 )

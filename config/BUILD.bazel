@@ -1,0 +1,8 @@
+load(":defs.bzl", "external_otrp_keystore")
+
+package(default_visibility = ["//visibility:public"])
+
+external_otrp_keystore(
+    name = "external-otrp-keystore",
+    build_setting_default = "",
+)

@@ -16,6 +16,7 @@
 
 load(
     "@io_bazel_rules_nbl//nbl/private:providers.bzl",
+    "OtrpInfo",
     "PackageInfo",
     "ScriptInfo",
 )
@@ -25,20 +26,28 @@ load(
     "REE_SCRIPTS",
     "TEE_SCRIPTS",
 )
-load("@sdk_info//:otrp_keystore_path.bzl", "otrp_keystore_path")
 
 def _otrp_keystore_impl(ctx):
     toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
     sdk = toolchain.sdk
+
     otrp_provision_exe = sdk.otrp.provision_exe
-    otrp_keystore = sdk.otrp.keystore
     otrp_suite = sdk.otrp.suite
+    otrp_inputs = [ctx.file.srcs, ctx.file.sd_privilege]
+
+    if ctx.attr._external_otrp_keystore[OtrpInfo].keystore != "":
+        otrp_keystore_path = ctx.attr._external_otrp_keystore[OtrpInfo].keystore
+        # |keystore| from build setting is string and cannot be added into
+        # |otrp_inputs| to ensure existancy.
+    else:
+        otrp_keystore_path = sdk.otrp.keystore.path
+        otrp_inputs.append(sdk.otrp.keystore)
 
     ctx.actions.run(
-        inputs = [otrp_keystore, ctx.file.srcs, ctx.file.sd_privilege],
+        inputs = otrp_inputs,
         arguments = [
             "-c",
-            otrp_keystore_path if otrp_keystore_path else otrp_keystore.path,
+            otrp_keystore_path,
             "-e",
             ctx.file.srcs.path,
             "-o",
@@ -56,6 +65,7 @@ _otrp_keystore = rule(
     attrs = {
         "srcs": attr.label(allow_single_file = True),
         "sd_privilege": attr.label(allow_single_file = True),
+        "_external_otrp_keystore": attr.label(default = "//config:external-otrp-keystore"),
         "out": attr.output(),
     },
     toolchains = ["@io_bazel_rules_nbl//nbl:toolchain"],
@@ -138,12 +148,6 @@ def _otrp_params_impl(ctx):
     toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
     sdk = toolchain.sdk
 
-    final_keystore_path = ""
-    if ctx.files.keystore:
-        tmp_path = otrp_keystore_path if otrp_keystore_path else sdk.otrp.keystore.path
-        provision_folder = tmp_path.split("/").pop()
-        final_keystore_path = "/".join([ctx.files.keystore[0].short_path, provision_folder])
-
     # TODO: Remove nblruncmd deps in non-nebula build
     runfiles = [ctx.file.srcs, sdk.target.nblruncmd]
     runfiles += ctx.files.uuid if ctx.files.uuid else []
@@ -152,7 +156,7 @@ def _otrp_params_impl(ctx):
         "exec_path": ctx.file.srcs.short_path,
         "exec_name": ctx.file.srcs.basename,
         "uuid": ctx.files.uuid[0].short_path if ctx.files.uuid else "",
-        "keystore": final_keystore_path,
+        "keystore": ctx.files.keystore[0].short_path + "/key_store_test",
         "nblruncmd": sdk.target.nblruncmd.short_path,
     }
 
