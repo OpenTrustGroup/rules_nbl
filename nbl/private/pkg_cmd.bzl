@@ -27,7 +27,7 @@ load(
     "TEE_SCRIPTS",
 )
 
-def _otrp_keystore_impl(ctx):
+def _otrp_gen_cmdfiles_impl(ctx):
     toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
     sdk = toolchain.sdk
 
@@ -39,6 +39,7 @@ def _otrp_keystore_impl(ctx):
         otrp_keystore_path = ctx.attr._external_otrp_keystore[OtrpInfo].keystore
         # |keystore| from build setting is string and cannot be added into
         # |otrp_inputs| to ensure existancy.
+
     else:
         otrp_keystore_path = sdk.otrp.keystore.path
         otrp_inputs.append(sdk.otrp.keystore)
@@ -60,8 +61,8 @@ def _otrp_keystore_impl(ctx):
         tools = otrp_suite,
     )
 
-_otrp_keystore = rule(
-    implementation = _otrp_keystore_impl,
+_otrp_gen_cmdfiles = rule(
+    implementation = _otrp_gen_cmdfiles_impl,
     attrs = {
         "srcs": attr.label(allow_single_file = True),
         "sd_privilege": attr.label(allow_single_file = True),
@@ -144,7 +145,7 @@ _register_otrp_cmd_test = rule(
     test = True,
 )
 
-def _otrp_params_impl(ctx):
+def _script_params_impl(ctx):
     toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
     sdk = toolchain.sdk
 
@@ -160,8 +161,8 @@ def _otrp_params_impl(ctx):
 
     return [ScriptInfo(substitutions = substitutions, runfiles = runfiles)]
 
-_otrp_params = rule(
-    implementation = _otrp_params_impl,
+_script_params = rule(
+    implementation = _script_params_impl,
     attrs = {
         "keystore": attr.label_list(allow_files = True),
         "uuid": attr.label_list(allow_files = True),
@@ -183,10 +184,10 @@ def nbl_register_pkgcmds(srcs, name = "default"):
         multiple pkgcmds
     """
 
-    # generate otrp keystore
-    _otrp_keystore(
-        name = "otrp_keystore-%s" % name,
-        out = "keystore-%s" % name,
+    # generate otrp command files (json)
+    _otrp_gen_cmdfiles(
+        name = "otrp_cmdfiles-%s" % name,
+        out = "cmdfiles-%s" % name,
         sd_privilege = "sd.privilege",
         srcs = srcs,
     )
@@ -194,11 +195,11 @@ def nbl_register_pkgcmds(srcs, name = "default"):
     # generate uuid.sh
     _uuid(name = "uuid-%s" % name, srcs = srcs)
 
-    # generate providers for different configs
-    _otrp_params(
-        name = "_otrp_params-%s" % name,
+    # generate script substitution params by configs
+    _script_params(
+        name = "_script_params-%s" % name,
         keystore = select({
-            "@io_bazel_rules_nbl//platforms:fuchsia": [":otrp_keystore-%s" % name],
+            "@io_bazel_rules_nbl//platforms:fuchsia": [":otrp_cmdfiles-%s" % name],
             "@io_bazel_rules_nbl//platforms:linux": [],
         }),
         uuid = select({
@@ -211,7 +212,7 @@ def nbl_register_pkgcmds(srcs, name = "default"):
     _register_otrp_cmd(
         name = "provision" if name == "default" else ("provision-%s" % name),
         srcs = srcs,
-        params = ":_otrp_params-%s" % name,
+        params = ":_script_params-%s" % name,
         template = select({
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["provision"]],
             "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["provision"]],
@@ -221,7 +222,7 @@ def nbl_register_pkgcmds(srcs, name = "default"):
     _register_otrp_cmd_test(
         name = "provision-test" if name == "default" else ("provision-test-%s" % name),
         srcs = srcs,
-        params = ":_otrp_params-%s" % name,
+        params = ":_script_params-%s" % name,
         template = select({
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["provision"]],
             "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["provision"]],
@@ -232,7 +233,7 @@ def nbl_register_pkgcmds(srcs, name = "default"):
     _register_otrp_cmd(
         name = "launch" if name == "default" else ("launch-%s" % name),
         srcs = srcs,
-        params = ":_otrp_params-%s" % name,
+        params = ":_script_params-%s" % name,
         template = select({
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["launch"]],
             "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["launch"]],
@@ -242,7 +243,7 @@ def nbl_register_pkgcmds(srcs, name = "default"):
     _register_otrp_cmd_test(
         name = "launch-test" if name == "default" else ("launch-test-%s" % name),
         srcs = srcs,
-        params = ":_otrp_params-%s" % name,
+        params = ":_script_params-%s" % name,
         template = select({
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["launch_test"]],
             "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["launch"]],
@@ -253,7 +254,7 @@ def nbl_register_pkgcmds(srcs, name = "default"):
     _register_otrp_cmd(
         name = "trace" if name == "default" else ("trace-%s" % name),
         srcs = srcs,
-        params = ":_otrp_params-%s" % name,
+        params = ":_script_params-%s" % name,
         template = select({
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["trace"]],
             "@io_bazel_rules_nbl//platforms:linux": [],
@@ -263,7 +264,7 @@ def nbl_register_pkgcmds(srcs, name = "default"):
     _register_otrp_cmd(
         name = "attach" if name == "default" else ("attach-%s" % name),
         srcs = srcs,
-        params = ":_otrp_params-%s" % name,
+        params = ":_script_params-%s" % name,
         template = select({
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["attach"]],
             "@io_bazel_rules_nbl//platforms:linux": [],
@@ -273,7 +274,7 @@ def nbl_register_pkgcmds(srcs, name = "default"):
     _register_otrp_cmd(
         name = "export" if name == "default" else ("export-%s" % name),
         srcs = srcs,
-        params = ":_otrp_params-%s" % name,
+        params = ":_script_params-%s" % name,
         template = select({
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["export"]],
             "@io_bazel_rules_nbl//platforms:linux": [],
