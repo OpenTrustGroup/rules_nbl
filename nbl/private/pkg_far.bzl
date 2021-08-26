@@ -16,9 +16,8 @@
 
 load(
     "@io_bazel_rules_nbl//nbl/private:pkg_cmd.bzl",
-    nbl_register_pkgcmds = "nbl_register_pkgcmds",
+    "nbl_register_pkgcmds",
 )
-
 load(
     "@io_bazel_rules_nbl//nbl/private:providers.bzl",
     "PackageInfo",
@@ -44,7 +43,7 @@ def _pkg_far_impl(ctx):
         data_files.append("%s=%s" % (dst_path, src_path))
 
     for f in ctx.files.libraries:
-        if (f.path.endswith('.so')):
+        if (f.path.endswith(".so")):
             src_path = f.path
             dst_path = "lib/" + f.basename
             data_files.append("%s=%s" % (dst_path, src_path))
@@ -85,7 +84,7 @@ def _pkg_far_impl(ctx):
 
     # create_archive_manifest -o MANIFEST -p . -e EXEC -a "data/data1=data/data1, data/data2=data/data2"
     ctx.actions.run(
-        inputs = ctx.files.private_data + [ctx.file.exec, ctx.file.meta, ctx.file.rscs] + additional_deps,
+        inputs = ctx.files.private_data + [ctx.file.exec, ctx.file.meta] + additional_deps,
         arguments = ["-p", ctx.label.package, "-o", archive_manifest.path, "-e", ctx.file.exec.path, "-a", ",".join(data_files)],
         executable = create_archive_manifest,
         outputs = [archive_manifest],
@@ -94,7 +93,7 @@ def _pkg_far_impl(ctx):
     # far create --archive=FAR --manifest=MANIFEST
     additional_files = ctx.files.services + ctx.files.drivers + ctx.files.libraries + ctx.files.tests + resources_files
     ctx.actions.run(
-        inputs = ctx.files.private_data + additional_files + [ctx.file.exec, ctx.file.meta, ctx.file.rscs, archive_manifest],
+        inputs = ctx.files.private_data + additional_files + [ctx.file.exec, ctx.file.meta, archive_manifest],
         arguments = ["create", "--archive=" + ctx.outputs.out.path, "--manifest=" + archive_manifest.path],
         executable = far,
         outputs = [ctx.outputs.out],
@@ -107,12 +106,11 @@ _pkg_far = rule(
         "exec": attr.label(allow_single_file = True, mandatory = True),
         "services": attr.label_list(allow_files = True),
         "tests": attr.label_list(allow_files = True),
-        "resources": attr.label_keyed_string_dict(allow_files=True),
+        "resources": attr.label_keyed_string_dict(allow_files = True),
         "drivers": attr.label_list(allow_files = True),
         "libraries": attr.label_list(allow_files = True),
         "private_data": attr.label_list(allow_files = True),
         "meta": attr.label(allow_single_file = True),
-        "rscs": attr.label(allow_single_file = True),
         "out": attr.output(),
     },
     toolchains = ["@io_bazel_rules_nbl//nbl:toolchain"],
@@ -121,6 +119,6 @@ _pkg_far = rule(
 def pkg_far(**kwargs):
     kwargs["name"] = kwargs["name"] if "name" in kwargs else "default"
     meta = kwargs.get("meta") or "meta/sandbox"
-    rscs = kwargs.get("rscs") or "resources/manifest.json"
-    _pkg_far(out = kwargs["name"] + ".far", meta = meta, rscs = rscs, **kwargs)
+
+    _pkg_far(out = kwargs["name"] + ".far", meta = meta, **kwargs)
     nbl_register_pkgcmds(":" + kwargs["name"], name = kwargs["name"])
