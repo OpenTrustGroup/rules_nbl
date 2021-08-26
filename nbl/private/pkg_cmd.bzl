@@ -148,8 +148,7 @@ def _otrp_params_impl(ctx):
     toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
     sdk = toolchain.sdk
 
-    # TODO: Remove nblruncmd deps in non-nebula build
-    runfiles = [ctx.file.srcs, sdk.target.nblruncmd]
+    runfiles = [ctx.file.srcs]
     runfiles += ctx.files.uuid if ctx.files.uuid else []
     runfiles += ctx.files.keystore if ctx.files.keystore else []
     substitutions = {
@@ -157,7 +156,6 @@ def _otrp_params_impl(ctx):
         "exec_name": ctx.file.srcs.basename,
         "uuid": ctx.files.uuid[0].short_path if ctx.files.uuid else "",
         "keystore": ctx.files.keystore[0].short_path + "/key_store_test",
-        "nblruncmd": sdk.target.nblruncmd.short_path,
     }
 
     return [ScriptInfo(substitutions = substitutions, runfiles = runfiles)]

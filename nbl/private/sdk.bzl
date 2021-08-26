@@ -24,7 +24,6 @@ load(
     "HostInfo",
     "NebulaSdkInfo",
     "OtrpInfo",
-    "TargetInfo",
 )
 
 def _remote_sdk(ctx, urls, strip_prefix, sha256):
@@ -254,9 +253,6 @@ def _nbl_sdk_impl(ctx):
             nodejs = ctx.files.host_nodejs,
             css_validator_exe = ctx.file.css_validator_exe,
         ),
-        target = TargetInfo(
-            nblruncmd = ctx.file.target_nblruncmd,
-        ),
     )]
 
 nbl_sdk = rule(
@@ -272,7 +268,6 @@ nbl_sdk = rule(
         "host_fidlgen": attr.label(allow_single_file = True, mandatory = True),
         "host_nodejs": attr.label(allow_files = True, mandatory = True),
         "css_validator_exe": attr.label(allow_single_file = True, mandatory = True),
-        "target_nblruncmd": attr.label(allow_single_file = True, mandatory = True),
     },
     provides = [NebulaSdkInfo],
 )

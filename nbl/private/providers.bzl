@@ -42,13 +42,6 @@ HostInfo = provider(
     },
 )
 
-TargetInfo = provider(
-    doc = "Contains information about the target files in Nebula SDK.",
-    fields = {
-        "nblruncmd": "A target tool to run commands in the other world.",
-    },
-)
-
 NebulaSdkInfo = provider(
     doc = "Contains information about the Nebula SDK.",
     fields = {
