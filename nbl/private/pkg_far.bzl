@@ -22,6 +22,10 @@ load(
     "@io_bazel_rules_nbl//nbl/private:providers.bzl",
     "PackageInfo",
 )
+load(
+    "@io_bazel_rules_nbl//nbl/private:script_templates.bzl",
+    "TARGET_DEVICE_PARSING_STUB",
+)
 
 def _pkg_far_impl(ctx):
     toolchain = ctx.toolchains["@io_bazel_rules_nbl//nbl:toolchain"]
@@ -98,7 +102,8 @@ def _pkg_far_impl(ctx):
         executable = far,
         outputs = [ctx.outputs.out],
     )
-    return [PackageInfo(exec = ctx.file.exec)]
+
+    return [PackageInfo(exec = ctx.file.exec, tests = ctx.files.tests)]
 
 _pkg_far = rule(
     implementation = _pkg_far_impl,
@@ -122,3 +127,63 @@ def pkg_far(**kwargs):
 
     _pkg_far(out = kwargs["name"] + ".far", meta = meta, **kwargs)
     nbl_register_pkgcmds(":" + kwargs["name"], name = kwargs["name"])
+
+def _get_runfiles(ctx, attrs):
+    runfiles = ctx.runfiles()
+    for attr in attrs:
+        executable = attr[DefaultInfo].files_to_run.executable
+        if executable:
+            runfiles = runfiles.merge(ctx.runfiles([executable]))
+
+        # TODO(timpeut): verify whether this is actually required
+        runfiles = runfiles.merge(ctx.runfiles(transitive_files = attr[DefaultInfo].files))
+        runfiles = runfiles.merge(attr[DefaultInfo].default_runfiles)
+    return runfiles
+
+def _pkg_test_impl(ctx):
+    runfiles = _get_runfiles(ctx, ctx.attr.deps)
+    runfiles = runfiles.merge(_get_runfiles(ctx, ctx.attr.srcs))
+    script = ctx.actions.declare_file(ctx.label.name + ".sh")
+
+    prerequisites = ""
+    tests = ""
+
+    for dep in ctx.files.deps:
+        prerequisites += "{}\n".format(dep.short_path)
+
+    for src in ctx.attr.srcs:
+        for test in src[PackageInfo].tests:
+            tests += "/otrp/tests/{}\n".format(test.basename)
+
+    substitutions = {
+        "%prerequisites%": prerequisites,
+        "%target_device_parsing_stub%": TARGET_DEVICE_PARSING_STUB,
+        "%tests%": tests,
+    }
+
+    ctx.actions.expand_template(
+        template = ctx.file._test_stub_script,
+        output = script,
+        substitutions = substitutions,
+    )
+
+    return [DefaultInfo(
+        executable = script,
+        runfiles = runfiles,
+    )]
+
+_pkg_test = rule(
+    implementation = _pkg_test_impl,
+    attrs = {
+        "srcs": attr.label_list(),
+        "deps": attr.label_list(),
+        "_test_stub_script": attr.label(
+            default = ":pkg_test_stub.sh",
+            allow_single_file = True,
+        ),
+    },
+    test = True,
+)
+
+def pkg_test(**kwargs):
+    _pkg_test(**kwargs)

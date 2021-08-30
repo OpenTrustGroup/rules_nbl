@@ -108,7 +108,6 @@ eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} /data/nblruncmd {cmd} {arg} ${{@}}
 echo "Done"
 """ % (_parse_target_device)
 
-
 _tee_trace_tpl = """
 #!/bin/bash
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
@@ -270,7 +269,6 @@ REE_SCRIPTS = {
 TEE_SCRIPTS = {
     "provision": _tee_provision_tpl,
     "launch": _tee_launch_tpl,
-    "launch_test": _tee_launch_test_tpl,
     "trace": _tee_trace_tpl,
     "attach": _tee_attach_tpl,
     "export": _tee_export_tpl,
@@ -280,3 +278,39 @@ TEE_SCRIPTS = {
 HOST_SCRIPTS = {
     "read_uuid": _host_read_uuid_tpl,
 }
+
+# template used in expand_template
+TARGET_DEVICE_PARSING_STUB = """
+
+declare sh_exec=""
+declare sh_opts=""
+declare sh_host=""
+declare cp_exec=""
+declare cp_opts=""
+declare cp_host=""
+declare -r target_device="${GX_DEVICE}"
+
+IFS=':'
+read -a device_params <<< "$target_device"
+
+unset IFS
+
+if [[ "${device_params[0]}" == "ssh" ]]; then
+  sh_exec="ssh"
+  sh_opts="-F /dev/null -o StrictHostKeyChecking=no -o ConnectTimeout=5 -p ${device_params[3]}"
+  sh_host="${device_params[1]}@${device_params[2]}"
+  cp_exec="scp"
+  cp_opts="-F /dev/null -r -o StrictHostKeyChecking=no -o ConnectTimeout=5 -P ${device_params[3]}"
+  cp_host="${device_params[1]}@${device_params[2]}:"
+elif [[ "${device_params[0]}" == "adb" ]]; then
+  sh_exec="adb"
+  sh_opts="${device_params[1]:+-s} ${device_params[1]} -H ${device_params[2]} -P ${device_params[3]} shell"
+  sh_host=""
+  cp_exec="adb"
+  cp_opts="${device_params[1]:+-s} ${device_params[1]} -H ${device_params[2]} -P ${device_params[3]} push"
+  cp_host=""
+else
+  echo "Unsupported target device: $target_device"
+  exit 1
+fi
+"""

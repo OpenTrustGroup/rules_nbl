@@ -217,17 +217,7 @@ def nbl_register_pkgcmds(srcs, name = "default"):
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["provision"]],
             "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["provision"]],
         }),
-    )
-
-    _register_otrp_cmd_test(
-        name = "provision-test" if name == "default" else ("provision-test-%s" % name),
-        srcs = srcs,
-        params = ":_script_params-%s" % name,
-        template = select({
-            "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["provision"]],
-            "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["provision"]],
-        }),
-        tags = ["exclusive"],
+        visibility = ["//visibility:public"],
     )
 
     _register_otrp_cmd(
@@ -238,17 +228,6 @@ def nbl_register_pkgcmds(srcs, name = "default"):
             "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["launch"]],
             "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["launch"]],
         }),
-    )
-
-    _register_otrp_cmd_test(
-        name = "launch-test" if name == "default" else ("launch-test-%s" % name),
-        srcs = srcs,
-        params = ":_script_params-%s" % name,
-        template = select({
-            "@io_bazel_rules_nbl//platforms:fuchsia": [TEE_SCRIPTS["launch_test"]],
-            "@io_bazel_rules_nbl//platforms:linux": [REE_SCRIPTS["launch"]],
-        }),
-        tags = ["exclusive"],
     )
 
     _register_otrp_cmd(

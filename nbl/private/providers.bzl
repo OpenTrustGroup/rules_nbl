@@ -18,6 +18,7 @@ PackageInfo = provider(
     doc = "Contains information about the package.",
     fields = {
         "exec": "The executable file path in package.",
+        "tests": "The gtest file names in package."
     },
 )
 
