@@ -13,6 +13,6 @@ all_tests=(
 )
 
 for test in ${all_tests[@]}; do
-  echo "Running: \"${test}\""
-  eval ${sh_exec} ${sh_opts} ${sh_host} /data/nblruncmd ${test}
+  echo "Running: \"${test}\" ${@}"
+  eval ${sh_exec} ${sh_opts} ${sh_host} /data/nblruncmd ${test} ${@}
 done
