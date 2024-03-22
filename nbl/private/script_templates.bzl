@@ -38,10 +38,10 @@ if [[ "${{device_params[0]}}" == "ssh" ]]; then
   cp_host="${{device_params[1]}}@${{device_params[2]}}:"
 elif [[ "${{device_params[0]}}" == "adb" ]]; then
   sh_exec="adb"
-  sh_opts="${{device_params[1]:+-s}} ${{device_params[1]}} -H ${{device_params[2]}} -P ${{device_params[3]}} shell"
+  sh_opts="-t ${{device_params[1]}} -H ${{device_params[2]}} -P ${{device_params[3]}} shell"
   sh_host=""
   cp_exec="adb"
-  cp_opts="${{device_params[1]:+-s}} ${{device_params[1]}} -H ${{device_params[2]}} -P ${{device_params[3]}} push"
+  cp_opts="-t ${{device_params[1]}} -H ${{device_params[2]}} -P ${{device_params[3]}} push"
   cp_host=""
 else
   echo "Unsupported target device: $target_device"
@@ -71,10 +71,10 @@ if [[ "${{sos_device_params[0]}}" == "ssh" ]]; then
   sos_cp_host="${{sos_device_params[1]}}@${{sos_device_params[2]}}:"
 elif [[ "${{sos_device_params[0]}}" == "adb" ]]; then
   sos_sh_exec="adb"
-  sos_sh_opts="${{sos_device_params[1]}} -H ${{sos_device_params[2]}} -P ${{sos_device_params[3]}} shell"
+  sos_sh_opts="-t ${{sos_device_params[1]}} -H ${{sos_device_params[2]}} -P ${{sos_device_params[3]}} shell"
   sos_sh_host=""
   sos_cp_exec="adb"
-  sos_cp_opts="${{sos_device_params[1]}} -H ${{sos_device_params[2]}} -P ${{sos_device_params[3]}} push"
+  sos_cp_opts="-t ${{sos_device_params[1]}} -H ${{sos_device_params[2]}} -P ${{sos_device_params[3]}} push"
   sos_cp_host=""
 else
   echo "Ignore parsing sos device"
@@ -364,10 +364,10 @@ if [[ "${device_params[0]}" == "ssh" ]]; then
   cp_host="${device_params[1]}@${device_params[2]}:"
 elif [[ "${device_params[0]}" == "adb" ]]; then
   sh_exec="adb"
-  sh_opts="${device_params[1]:+-s} ${device_params[1]} -H ${device_params[2]} -P ${device_params[3]} shell"
+  sh_opts="-t ${device_params[1]} -H ${device_params[2]} -P ${device_params[3]} shell"
   sh_host=""
   cp_exec="adb"
-  cp_opts="${device_params[1]:+-s} ${device_params[1]} -H ${device_params[2]} -P ${device_params[3]} push"
+  cp_opts="-t ${device_params[1]} -H ${device_params[2]} -P ${device_params[3]} push"
   cp_host=""
 else
   echo "Unsupported target device: $target_device"
