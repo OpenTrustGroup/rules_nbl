@@ -47,13 +47,55 @@ else
   echo "Unsupported target device: $target_device"
   exit 1
 fi
+
+readonly sos_device="${{GX_SOS_DEVICE}}"
+
+declare sos_sh_exec=""
+declare sos_sh_opts=""
+declare sos_sh_host=""
+declare sos_cp_exec=""
+declare sos_cp_opts=""
+declare sos_cp_host=""
+
+IFS=':'
+read -a sos_device_params <<< "$sos_device"
+
+unset IFS
+
+if [[ "${{sos_device_params[0]}}" == "ssh" ]]; then
+  sos_sh_exec="ssh"
+  sos_sh_opts="-F /dev/null -o StrictHostKeyChecking=no -o ConnectTimeout=5 -p ${{sos_device_params[3]}}"
+  sos_sh_host="${{sos_device_params[1]}}@${{sos_device_params[2]}}"
+  sos_cp_exec="scp"
+  sos_cp_opts="-F /dev/null -r -o StrictHostKeyChecking=no -o ConnectTimeout=5 -P ${{sos_device_params[3]}}"
+  sos_cp_host="${{sos_device_params[1]}}@${{sos_device_params[2]}}:"
+elif [[ "${{sos_device_params[0]}}" == "adb" ]]; then
+  sos_sh_exec="adb"
+  sos_sh_opts="${{sos_device_params[1]}} -H ${{sos_device_params[2]}} -P ${{sos_device_params[3]}} shell"
+  sos_sh_host=""
+  sos_cp_exec="adb"
+  sos_cp_opts="${{sos_device_params[1]}} -H ${{sos_device_params[2]}} -P ${{sos_device_params[3]}} push"
+  sos_cp_host=""
+else
+  echo "Ignore parsing sos device"
+fi
 """
+
 
 _tee_provision_tpl = """
 #!/bin/bash
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
 %s
+
+if [[ -n "${{sos_sh_exec}}" ]]; then
+  sh_exec="${{sos_sh_exec}}"
+  sh_opts="${{sos_sh_opts}}"
+  sh_host="${{sos_sh_host}}"
+  cp_exec="${{sos_cp_exec}}"
+  cp_opts="${{sos_cp_opts}}"
+  cp_host="${{sos_cp_host}}"
+fi
 
 echo "Provisioning..."
 eval ${{sh_exec}} ${{sh_opts}} ${{sh_host}} rm -rf /data/nebula_ta
@@ -68,6 +110,15 @@ _tee_launch_tpl = """
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
 %s
+
+if [[ -n "${{sos_sh_exec}}" ]]; then
+  sh_exec="${{sos_sh_exec}}"
+  sh_opts="${{sos_sh_opts}}"
+  sh_host="${{sos_sh_host}}"
+  cp_exec="${{sos_cp_exec}}"
+  cp_opts="${{sos_cp_opts}}"
+  cp_host="${{sos_cp_host}}"
+fi
 
 if [[ "${{@}}" != "" ]]; then
     ARGS="-a \'${{@}}\'"
@@ -85,6 +136,15 @@ _tee_launch_test_tpl = """
 set -eo pipefail; [[ "${{TRACE}}" ]] && set -x
 
 %s
+
+if [[ -n "${{sos_sh_exec}}" ]]; then
+  sh_exec="${{sos_sh_exec}}"
+  sh_opts="${{sos_sh_opts}}"
+  sh_host="${{sos_sh_host}}"
+  cp_exec="${{sos_cp_exec}}"
+  cp_opts="${{sos_cp_opts}}"
+  cp_host="${{sos_cp_host}}"
+fi
 
 if [[ "${{@}}" != "" ]]; then
     ARGS="-a \'${{@}}\'"
