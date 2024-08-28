@@ -129,7 +129,6 @@ def _gen_cc_config(ctx, cc_target, cc_path, gcc_path, sysroot_path):
     if gcc_path == "":
         _assert_eq(cc_target, "aarch64-linux-gnu")
         _assert_eq(cc_type, "clang")
-        _assert_eq(cc_version, "7.0.0")
         gcc_path = sysroot_path
         sysroot_path = "{}/{}".format(gcc_path, cc_target)
 
