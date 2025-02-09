@@ -189,6 +189,7 @@ def _impl(ctx):
                             "--target=aarch64-fuchsia",
                             "--sysroot=%{SYSROOT_PATH}%",
                             "-L%{SYSROOT_PATH}%/fdio/lib",
+                            "-L%{COMPILER_PATH}%/lib/aarch64-unknown-fuchsia/c++",
                             "-lfdio",
                             "-lzircon",
                             "-lc",
